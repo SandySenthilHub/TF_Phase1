@@ -4,8 +4,12 @@ import path from 'path';
 import fs from 'fs';
 import { sql, getPool } from '../config/database.js';
 import { exec, execSync } from 'child_process';
-
 import { fileURLToPath } from 'url';
+import { createHash } from 'crypto';
+import { spawn } from 'child_process';
+
+
+
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -42,42 +46,62 @@ router.post('/upload/:sessionId', upload.single('document'), async (req, res) =>
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    // Extract file info
-    const fileName = file.originalname;
-    const fileType = path.extname(file.originalname).substring(1); // remove dot
-    const fileSize = file.size;
-    const filePath = `/uploads/${file.filename}`;  // ✅ relative path usable by frontend
+    // ✅ Compute file hash
+    const fileBuffer = fs.readFileSync(file.path);
+    const fileHash = createHash('sha256').update(fileBuffer).digest('hex');
 
-    const pool = await getPool(); // ✅ Add this before using pool
+    const pool = await getPool();
 
+    // ✅ Check if the file hash exists for this specific session
+    const checkResult = await pool.request()
+      .input('FileHash', sql.NVarChar(100), fileHash)
+      .input('SessionId', sql.UniqueIdentifier, sessionId)
+      .query(`
+        SELECT Id 
+        FROM SB_TF_ingestion_Sets 
+        WHERE FileHash = @FileHash AND SessionId = @SessionId
+      `);
+
+    if (checkResult.recordset.length > 0) {
+      // ❌ Duplicate found — delete temp uploaded file
+      fs.unlinkSync(file.path);
+
+      return res.status(409).json({
+        error: 'Duplicate document upload detected in this session. This file already exists.'
+      });
+    }
+
+    // ✅ Insert new record
     const result = await pool.request()
       .input('SessionId', sql.UniqueIdentifier, sessionId)
-      .input('FileName', sql.NVarChar(255), fileName)
-      .input('FileType', sql.NVarChar(100), fileType)
-      .input('FileSize', sql.Int, fileSize)
+      .input('FileName', sql.NVarChar(255), file.originalname)
+      .input('FileType', sql.NVarChar(100), path.extname(file.originalname).substring(1))
+      .input('FileSize', sql.Int, file.size)
       .input('FilePath', sql.NVarChar(500), `/uploads/${file.filename}`)
+      .input('FileHash', sql.NVarChar(100), fileHash)
       .query(`
-    INSERT INTO TF_ingestion_raw (SessionId, FileName, FileType, FileSize, FilePath)
-    OUTPUT INSERTED.Id
-    VALUES (@SessionId, @FileName, @FileType, @FileSize, @FilePath)
-  `);
+        INSERT INTO SB_TF_ingestion_Sets 
+        (SessionId, FileName, FileType, FileSize, FilePath, FileHash)
+        OUTPUT INSERTED.Id
+        VALUES (@SessionId, @FileName, @FileType, @FileSize, @FilePath, @FileHash)
+      `);
 
     const insertedId = result.recordset[0].Id;
 
-    console.log('✅ Document inserted into TF_ingestion_raw:', file.filename);
+    console.log('✅ Document uploaded:', file.originalname);
 
     res.status(201).json({
-      message: 'Document uploaded and saved to TF_ingestion_raw successfully.',
+      message: 'Document uploaded successfully.',
       fileName: file.originalname,
-      savedAs: file.filename,
       id: insertedId
     });
 
   } catch (err) {
     console.error('❌ Upload failed:', err);
-    res.status(500).json({ error: 'Failed to upload and save document' });
+    res.status(500).json({ error: 'Failed to upload and save document.' });
   }
 });
+
 
 
 // ✅ Get all documents for a session
@@ -90,7 +114,7 @@ router.get('/session/:sessionId', async (req, res) => {
       .input('SessionId', sql.UniqueIdentifier, sessionId)
       .query(`
         SELECT Id, FileName, FileType, FileSize, FilePath, UploadedAt
-        FROM TF_ingestion_raw
+        FROM SB_TF_ingestion_Sets
         WHERE SessionId = @SessionId
       `);
 
@@ -111,7 +135,7 @@ router.get('/:id/pdf', async (req, res) => {
     const result = await pool.request()
       .input('Id', sql.UniqueIdentifier, id)
       .query(`
-        SELECT FilePath FROM TF_ingestion_raw WHERE Id = @Id
+        SELECT FilePath FROM SB_TF_ingestion_Sets WHERE Id = @Id
       `);
 
     if (result.recordset.length === 0) {
@@ -134,70 +158,193 @@ router.get('/:id/pdf', async (req, res) => {
 });
 
 
-//  DELETE a document by ID
 router.delete('/:id', async (req, res) => {
   const { id } = req.params;
 
   try {
     const pool = await getPool();
 
-    // Get the file path before deleting DB record
-    const fileResult = await pool.request()
+    // Get file + sessionId from the main document
+    const result = await pool.request()
       .input('Id', sql.UniqueIdentifier, id)
-      .query('SELECT FilePath FROM TF_ingestion_raw WHERE Id = @Id');
+      .query(`SELECT FilePath, SessionId, Id FROM SB_TF_ingestion_Sets WHERE Id = @Id`);
 
-    if (fileResult.recordset.length === 0) {
+    if (result.recordset.length === 0) {
       return res.status(404).json({ error: 'Document not found' });
     }
 
-    const filePath = fileResult.recordset[0].FilePath;
-    const fullFilePath = path.join(process.cwd(), filePath); // Resolve full path from DB value
+    const { FilePath, SessionId: sessionId, Id: documentId } = result.recordset[0];
+    const fileName = path.basename(FilePath, '.pdf');
+    const fullFilePath = path.join(process.cwd(), FilePath);
 
-    // Delete file from disk
+    const splitFolderPath = path.join(process.cwd(), 'outputs', sessionId, `${fileName}-${documentId}`);
+    const groupedFolderPath = path.join(process.cwd(), 'grouped_outputs', sessionId, documentId);
+
+    console.log("🧾 Deleting document ID:", documentId);
+    console.log("📁 Uploaded PDF Path:", fullFilePath);
+    console.log("📂 Split Folder:", splitFolderPath);
+    console.log("📂 Grouped Folder:", groupedFolderPath);
+
+    // Delete uploaded file
     if (fs.existsSync(fullFilePath)) {
       fs.unlinkSync(fullFilePath);
+      console.log("🗑️ Uploaded file deleted.");
+    } else {
+      console.log("⚠️ Uploaded file not found:", fullFilePath);
     }
 
-    // Delete record from DB
+    // Delete output split folder
+    if (fs.existsSync(splitFolderPath)) {
+      fs.rmSync(splitFolderPath, { recursive: true, force: true });
+      console.log("🧹 Split folder deleted.");
+    } else {
+      console.log("⚠️ Split folder not found:", splitFolderPath);
+    }
+
+    // Delete grouped output folder
+    if (fs.existsSync(groupedFolderPath)) {
+      fs.rmSync(groupedFolderPath, { recursive: true, force: true });
+      console.log("🧹 Grouped folder deleted.");
+    } else {
+      console.log("⚠️ Grouped folder not found:", groupedFolderPath);
+    }
+
+    // Delete all related rows
+    const deleteTables = [
+      { table: "TF_ingestion_CleanedPDF", col: "document_id" },
+      { table: "TF_ingestion_CleanedOCR", col: "document_id" },
+      { table: "TF_ingestion_mGroupsPDF", col: "document_id" },
+      { table: "TF_ingestion_mGroupsOCR", col: "document_id" },
+      { table: "TF_ingestion_mGroupsFields", col: "document_id" },
+    ];
+
+    for (const { table, col } of deleteTables) {
+      const del = await pool.request()
+        .input('document_id', sql.UniqueIdentifier, documentId)
+        .query(`DELETE FROM ${table} WHERE ${col} = @document_id`);
+      console.log(`🗑️ Deleted ${del.rowsAffected[0]} rows from ${table}`);
+    }
+
+    // Finally delete from main table
     await pool.request()
       .input('Id', sql.UniqueIdentifier, id)
-      .query('DELETE FROM TF_ingestion_raw WHERE Id = @Id');
+      .query(`DELETE FROM SB_TF_ingestion_Sets WHERE Id = @Id`);
+    console.log('✅ Document record deleted from SB_TF_ingestion_Sets');
 
-    console.log(' Document deleted:', id);
-
-    res.status(200).json({ message: 'Document deleted successfully' });
+    res.status(200).json({ message: '✅ Document and all related data deleted successfully.' });
   } catch (error) {
-    console.error('Delete document failed:', error);
-    res.status(500).json({ error: 'Failed to delete document' });
+    console.error('❌ Delete document failed:', error);
+    res.status(500).json({ error: 'Failed to delete document and related data.' });
   }
 });
 
 
+
+
+
+
+
 // Call Python splitter from Node
+// router.post('/split/:sessionId', async (req, res) => {
+//   const { sessionId } = req.params;
+//   const { filePath, documentId } = req.body;
+
+//   // Fix the full path here
+//   const serverRoot = path.join(__dirname, '..', '..');
+//   const actualUploadDir = path.join(serverRoot, 'uploads'); // 🛠 Correct folder name
+//   const scriptPath = path.join(__dirname, '..', 'python', 'split_OCR.py'); // ✅ Define scriptPath here
+//   const absoluteFilePath = path.join(actualUploadDir, path.basename(filePath));
+
+//   // Optional: Log to confirm
+//   console.log("✅ File to split:", absoluteFilePath);
+
+//   if (!fs.existsSync(absoluteFilePath)) {
+//     return res.status(400).json({ error: `❌ File not found: ${absoluteFilePath}` });
+//   }
+
+//   // Run Python with correct file path
+//   // const command = `python "${scriptPath}" "${absoluteFilePath}" "${sessionId}" "${documentId}"`;
+
+//   const ocrMethod = req.body.ocrMethod || 'tesseract'; // default if not passed
+//   const command = `python "${scriptPath}" "${absoluteFilePath}" "${sessionId}" "${documentId}" "${ocrMethod}"`;
+
+
+//   console.log("📂 Running split command:", command);
+
+//   exec(command, (err, stdout, stderr) => {
+//     console.log("📤 Python STDOUT:\n", stdout);
+//     console.error("📛 Python STDERR:\n", stderr);
+
+//     if (err) {
+//       return res.status(500).json({
+//         error: 'Python split failed',
+//         stderr,
+//         stdout,
+//       });
+//     }
+
+//     try {
+//       const outputDir = path.join(
+//         __dirname,
+//         '..',
+//         '..',
+//         'outputs',
+//         sessionId,
+//         `${path.basename(filePath, '.pdf')}-${documentId}`
+//       );
+
+//       // ✅ Return relative paths suitable for FE
+//       const files = fs.readdirSync(outputDir)
+//         .filter(f => f.endsWith('.pdf') && f !== 'original.pdf')
+//         .map(f => ({
+//           fileName: f,
+//           name: f,
+//           pdfPath: `/outputs/${sessionId}/${path.basename(filePath, '.pdf')}-${documentId}/${f}`,
+//           textPath: `/outputs/${sessionId}/${path.basename(filePath, '.pdf')}-${documentId}/${f.replace('.pdf', '.txt')}`,
+//         }));
+
+//       for (const file of files) {
+//         const textAbsPath = path.join(serverRoot, file.textPath); // Full .txt file path
+//         const extractScript = path.join(__dirname, '..', 'python', 'extract_fields.py');
+//         const extractCmd = `python "${extractScript}" "${textAbsPath}"`;
+
+//         // console.log("📤 Extracting fields from:", textAbsPath);
+//         try {
+//           execSync(extractCmd);
+//         } catch (exErr) {
+//           console.error("❌ Field extraction failed:", exErr.message);
+//         }
+//       }
+
+
+//       return res.status(200).json({
+//         message: 'Document split successfully',
+//         output: stdout,
+//         files: files,
+//       });
+//     } catch (fileErr) {
+//       console.error('❌ Error reading split files:', fileErr);
+//       return res.status(500).json({ error: 'Split succeeded but reading output failed' });
+//     }
+//   });
+// });
+
 router.post('/split/:sessionId', async (req, res) => {
   const { sessionId } = req.params;
-  const { filePath, documentId } = req.body;
+  const { filePath, documentId, ocrMethod = 'azure' } = req.body;
 
-  // Fix the full path here
   const serverRoot = path.join(__dirname, '..', '..');
-  const actualUploadDir = path.join(serverRoot, 'uploads'); // 🛠 Correct folder name
-  const scriptPath = path.join(__dirname, '..', 'python', 'split_by_form_azure.py'); // ✅ Define scriptPath here
+  const actualUploadDir = path.join(serverRoot, 'uploads');
+  const scriptPath = path.join(__dirname, '..', 'python', 'split_OCR.py');
   const absoluteFilePath = path.join(actualUploadDir, path.basename(filePath));
 
-  // Optional: Log to confirm
   console.log("✅ File to split:", absoluteFilePath);
 
   if (!fs.existsSync(absoluteFilePath)) {
     return res.status(400).json({ error: `❌ File not found: ${absoluteFilePath}` });
   }
 
-  // Run Python with correct file path
-  // const command = `python "${scriptPath}" "${absoluteFilePath}" "${sessionId}" "${documentId}"`;
-
-  const ocrMethod = req.body.ocrMethod || 'tesseract'; // default if not passed
   const command = `python "${scriptPath}" "${absoluteFilePath}" "${sessionId}" "${documentId}" "${ocrMethod}"`;
-
-
   console.log("📂 Running split command:", command);
 
   exec(command, (err, stdout, stderr) => {
@@ -214,40 +361,31 @@ router.post('/split/:sessionId', async (req, res) => {
 
     try {
       const outputDir = path.join(
-        __dirname,
-        '..',
-        '..',
+        serverRoot,
         'outputs',
         sessionId,
         `${path.basename(filePath, '.pdf')}-${documentId}`
       );
 
-      // ✅ Return relative paths suitable for FE
-      const files = fs.readdirSync(outputDir)
-        .filter(f => f.endsWith('.pdf') && f !== 'original.pdf')
-        .map(f => ({
-          fileName: f,
-          name: f,
-          pdfPath: `/outputs/${sessionId}/${path.basename(filePath, '.pdf')}-${documentId}/${f}`,
-          textPath: `/outputs/${sessionId}/${path.basename(filePath, '.pdf')}-${documentId}/${f.replace('.pdf', '.txt')}`,
-        }));
-
-      for (const file of files) {
-        const textAbsPath = path.join(serverRoot, file.textPath); // Full .txt file path
-        const extractScript = path.join(__dirname, '..', 'python', 'extract_fields.py');
-        const extractCmd = `python "${extractScript}" "${textAbsPath}"`;
-
-        console.log("📤 Extracting fields from:", textAbsPath);
-        try {
-          execSync(extractCmd);
-        } catch (exErr) {
-          console.error("❌ Field extraction failed:", exErr.message);
-        }
+      if (!fs.existsSync(outputDir)) {
+        return res.status(404).json({ error: '❌ Output folder not found after split.' });
       }
 
+      const files = fs.readdirSync(outputDir)
+        .filter(f => f.endsWith('.pdf') && f !== 'original.pdf')
+        .map(f => {
+          const baseName = f.replace('.pdf', '');
+          return {
+            fileName: f,
+            name: f,
+            pdfPath: `/outputs/${sessionId}/${path.basename(filePath, '.pdf')}-${documentId}/${f}`,
+            textPath: `/outputs/${sessionId}/${path.basename(filePath, '.pdf')}-${documentId}/${baseName}.txt`,
+            jsonPath: `/outputs/${sessionId}/${path.basename(filePath, '.pdf')}-${documentId}/${baseName}.fields.json`,
+          };
+        });
 
       return res.status(200).json({
-        message: 'Document split successfully',
+        message: '✅ Document split and processed successfully',
         output: stdout,
         files: files,
       });
@@ -265,7 +403,7 @@ router.get('/:id/pdf-info', async (req, res) => {
 
     const result = await pool.request()
       .input('Id', sql.UniqueIdentifier, id)
-      .query(`SELECT FilePath, SessionId FROM TF_ingestion_raw WHERE Id = @Id`);
+      .query(`SELECT FilePath, SessionId FROM SB_TF_ingestion_Sets WHERE Id = @Id`);
 
     if (result.recordset.length === 0) {
       return res.status(404).json({ error: 'Document not found' });
@@ -278,6 +416,145 @@ router.get('/:id/pdf-info', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+
+// Call python grouping 
+
+router.post('/group/:sessionId/:documentId', async (req, res) => {
+  const { sessionId, documentId } = req.params;
+  const scriptPath = path.join(__dirname, '..', 'python', 'group_by_form.py');
+
+  try {
+    // Check if script exists
+    if (!fs.existsSync(scriptPath)) {
+      return res.status(404).json({ error: 'Grouping script not found.' });
+    }
+
+    // ✅ Add '--group' as the first argument
+    const pythonProcess = spawn('python', [scriptPath, sessionId, documentId]);
+
+    pythonProcess.stdout.on('data', data => {
+      console.log(`[GROUPING STDOUT]: ${data}`);
+    });
+
+    pythonProcess.stderr.on('data', data => {
+      console.error(`[GROUPING STDERR]: ${data}`);
+    });
+
+    pythonProcess.on('exit', (code) => {
+      if (code === 0) {
+        console.log(`✅ Grouping script finished successfully.`);
+        res.json({ message: "Grouping completed." });
+      } else {
+        console.error(`❌ Grouping script exited with code ${code}`);
+        res.status(500).json({ error: "Grouping script failed to execute." });
+      }
+    });
+
+  } catch (err) {
+    console.error('❌ Grouping failed:', err);
+    res.status(500).json({ error: 'Internal server error during grouping.' });
+  }
+});
+
+router.get('/grouped-files/:sessionId/:documentId', (req, res) => {
+  const { sessionId, documentId } = req.params;
+
+  const groupedBasePath = path.join(
+    __dirname,
+    '..',
+    '..',
+    'grouped',
+    sessionId,
+    documentId
+  );
+
+  if (!fs.existsSync(groupedBasePath)) {
+    return res.status(404).json({ error: 'Grouped folder not found' });
+  }
+
+  const forms = fs.readdirSync(groupedBasePath).filter(formName => {
+    const formPath = path.join(groupedBasePath, formName);
+    return fs.existsSync(formPath) && fs.statSync(formPath).isDirectory();
+  });
+
+  return res.json({ forms });
+});
+
+
+// Call pyton catalog
+
+router.post('/catalog', async (req, res) => {
+  try {
+    const { session_id, document_id } = req.body;
+
+    if (!session_id || !document_id) {
+      return res.status(400).json({ error: 'session_id and document_id are required' });
+    }
+
+    const scriptPath = path.join(__dirname, "..", "python", "catalog_with_master.py");
+    const pythonProcess = spawn('python', [scriptPath, session_id, document_id]);
+
+    let stdout = '';
+    let stderr = '';
+
+    pythonProcess.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+
+    pythonProcess.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    pythonProcess.on('close', (code) => {
+      if (code === 0) {
+        console.log('[Catalog Success]:', stdout);
+        return res.status(200).json({ success: true, output: stdout });
+      } else {
+        console.error('[Catalog Error]:', stderr);
+        return res.status(500).json({ success: false, error: stderr });
+      }
+    });
+  } catch (err) {
+    console.error('[Catalog Fatal Error]:', err);
+    return res.status(500).json({ error: 'Internal Server Error' });
+  }
+});
+
+
+router.get('/cataloged-documents/:sessionId/:documentId', async (req, res) => {
+  const { sessionId, documentId } = req.params;
+
+  if (!sessionId || !documentId) {
+    return res.status(400).json({ success: false, message: "Missing sessionId or documentId" });
+  }
+
+  try {
+    const pool = await getPool(); // ✅ Use your shared pool
+
+    const result = await pool.request()
+      .input('session_id', sql.VarChar, sessionId)
+      .input('document_id', sql.VarChar, documentId)
+      .query(`
+        SELECT id, session_id, document_id, grouped_form_type,
+               matched_document_name, matched_document_id,
+               confidence_score, cataloged_at
+        FROM TF_mdocs_mgroups
+        WHERE session_id = @session_id AND document_id = @document_id
+        ORDER BY cataloged_at DESC
+      `);
+
+    return res.json({ success: true, data: result.recordset });
+  } catch (error) {
+    console.error('Catalog fetch error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+
+
+
+
 
 
 // GET /api/documents/split/session/:sessionId

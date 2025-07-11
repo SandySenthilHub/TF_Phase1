@@ -35,6 +35,8 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/outputs', express.static(path.join(__dirname, '..', 'outputs')));
+app.use('/grouped', express.static(path.join(__dirname, '..', 'grouped')));
+
 
 // Routes
 app.use('/api/auth', authRoutes);

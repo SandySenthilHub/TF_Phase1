@@ -134,69 +134,77 @@ const Upload: React.FC = () => {
     }
   };
 
-  const uploadFiles = async () => {
-    if (!selectedSessionId || uploadedFiles.length === 0) return;
+const uploadFiles = async () => {
+  if (!selectedSessionId || uploadedFiles.length === 0) return;
 
-    setIsUploading(true);
-    const pendingFiles = uploadedFiles.filter(f => f.status === 'pending');
+  setIsUploading(true);
+  const pendingFiles = uploadedFiles.filter(f => f.status === 'pending');
 
-    for (const uploadFile of pendingFiles) {
-      try {
-        // Update status to uploading
+  for (const uploadFile of pendingFiles) {
+    try {
+      setUploadedFiles(prev =>
+        prev.map(f =>
+          f.id === uploadFile.id
+            ? { ...f, status: 'uploading', progress: 0 }
+            : f
+        )
+      );
+
+      const progressInterval = setInterval(() => {
         setUploadedFiles(prev =>
           prev.map(f =>
-            f.id === uploadFile.id
-              ? { ...f, status: 'uploading', progress: 0 }
+            f.id === uploadFile.id && f.progress < 90
+              ? { ...f, progress: f.progress + 10 }
               : f
           )
         );
+      }, 200);
 
-        // Simulate upload progress
-        const progressInterval = setInterval(() => {
-          setUploadedFiles(prev =>
-            prev.map(f =>
-              f.id === uploadFile.id && f.progress < 90
-                ? { ...f, progress: f.progress + 10 }
-                : f
-            )
-          );
-        }, 200);
+      const result = await uploadDocument(selectedSessionId, uploadFile.file);
 
-        // Upload the file
-        const result = await uploadDocument(selectedSessionId, uploadFile.file);
-
-        // Clear progress interval and mark as success
-        clearInterval(progressInterval);
-        setUploadedFiles(prev =>
-          prev.map(f =>
-            f.id === uploadFile.id
-              ? {
+      clearInterval(progressInterval);
+      setUploadedFiles(prev =>
+        prev.map(f =>
+          f.id === uploadFile.id
+            ? {
                 ...f,
                 status: 'success',
                 progress: 100,
-                documentId: result?.id // optional if needed later
+                documentId: result?.id
               }
-              : f
-          )
-        );
-      } catch (error: any) {
-        setUploadedFiles(prev =>
-          prev.map(f =>
-            f.id === uploadFile.id
-              ? {
+            : f
+        )
+      );
+    } catch (error: any) {
+      let errorMessage = 'Upload failed';
+      if (error.response?.status === 409) {
+        errorMessage = '❌ This document already exists. Please upload a different file.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
+      setUploadedFiles(prev =>
+        prev.map(f =>
+          f.id === uploadFile.id
+            ? {
                 ...f,
                 status: 'error',
                 progress: 0,
-                error: error.message || 'Upload failed'
+                error: errorMessage
               }
-              : f
-          )
-        );
-      }
-    }
+            : f
+        )
+      );
 
-    setIsUploading(false);
-  };
+      // Show UI message
+      alert(errorMessage); // Or use toast.error(errorMessage)
+    }
+  }
+
+  setIsUploading(false);
+  navigate(`/sessions/${selectedSessionId}`);
+};
+
 
 
   const getFileIcon = (file: File) => {

@@ -17,7 +17,7 @@ export class SessionModel {
         .input('createdAt', sql.DateTime, new Date())
         .input('updatedAt', sql.DateTime, new Date())
         .query(`
-          INSERT INTO ingestion_session 
+          INSERT INTO SB_TF_ingestion_Box 
           (cifNumber, lcNumber, lifecycle, userId, status, createdAt, updatedAt, iterations)
           OUTPUT INSERTED.*
           VALUES (@cifNumber, @lcNumber, @lifecycle, @userId, @status, @createdAt, @updatedAt, 0)
@@ -38,7 +38,7 @@ export class SessionModel {
       let query = `
         SELECT s.*, 
                COUNT(d.id) as documentCount
-        FROM ingestion_session s
+        FROM SB_TF_ingestion_Box s
         LEFT JOIN ingestion_document_raw d ON s.id = d.sessionId
       `;
       
@@ -67,7 +67,7 @@ export class SessionModel {
         .query(`
           SELECT s.*, 
                  COUNT(d.id) as documentCount
-          FROM ingestion_session s
+          FROM SB_TF_ingestion_Box s
           LEFT JOIN ingestion_document_raw d ON s.id = d.sessionId
           WHERE s.id = @sessionId
           GROUP BY s.id, s.cifNumber, s.lcNumber, s.lifecycle, s.status, s.createdAt, s.updatedAt, s.userId, s.iterations
@@ -90,7 +90,7 @@ export class SessionModel {
         .input('status', sql.VarChar(20), status)
         .input('updatedAt', sql.DateTime, new Date())
         .query(`
-          UPDATE ingestion_session 
+          UPDATE SB_TF_ingestion_Box 
           SET status = @status, updatedAt = @updatedAt
           OUTPUT INSERTED.*
           WHERE id = @sessionId
@@ -112,7 +112,7 @@ export class SessionModel {
         .input('sessionId', sql.VarChar(50), sessionId)
         .input('updatedAt', sql.DateTime, new Date())
         .query(`
-          UPDATE ingestion_session 
+          UPDATE SB_TF_ingestion_Box 
           SET iterations = iterations + 1, updatedAt = @updatedAt
           OUTPUT INSERTED.*
           WHERE id = @sessionId
@@ -162,7 +162,7 @@ export class SessionModel {
       
       // Delete session from database (CASCADE will handle related records)
       const deleteResult = await request.query(`
-        DELETE FROM ingestion_session 
+        DELETE FROM SB_TF_ingestion_Box 
         WHERE id = @sessionId
       `);
       

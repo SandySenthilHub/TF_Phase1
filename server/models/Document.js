@@ -127,47 +127,72 @@ export class DocumentModel {
     }
   }
 
-  static async deleteDocument(documentId) {
-    try {
-      const pool = await getPool();
-      const request = pool.request();
+static async deleteDocument(documentId) {
+  try {
+    const pool = await getPool();
+    const request = pool.request();
 
-      // First get the document to get file path for cleanup
-      const document = await this.getDocumentById(documentId);
+    // Step 1: Get file info (and sessionId for split folder)
+    const document = await request
+      .input('documentId', sql.UniqueIdentifier, documentId)
+      .query(`
+        SELECT id, filePath, session_id 
+        FROM ingestion_document_raw 
+        WHERE id = @documentId
+      `);
 
-      if (!document) {
-        throw new Error('Document not found');
-      }
-
-      // Delete the physical file
-      try {
-        const uploadsDir = process.env.UPLOAD_PATH || './uploads';
-        const fullPath = path.join(uploadsDir, document.filePath);
-
-        if (fs.existsSync(fullPath)) {
-          fs.unlinkSync(fullPath);
-          console.log(`Deleted file: ${fullPath}`);
-        }
-      } catch (fileError) {
-        console.error('Error deleting file:', fileError);
-        // Continue with database deletion even if file deletion fails
-      }
-
-      // Delete from database (CASCADE will handle related records)
-      const result = await request
-        .input('documentId', sql.VarChar(50), documentId)
-        .query(`
-          DELETE FROM ingestion_document_raw 
-          WHERE id = @documentId
-        `);
-
-      console.log(`Document deleted: ${documentId}`);
-      return { success: true, deletedDocument: document };
-    } catch (error) {
-      console.error('Error deleting document:', error);
-      throw error;
+    if (document.recordset.length === 0) {
+      console.log("⚠️ Document not found.");
+      return { success: false, message: 'Document not found' };
     }
+
+    const { filePath, session_id } = document.recordset[0];
+
+    // Step 2: Delete uploaded file from disk
+    const uploadsDir = process.env.UPLOAD_PATH || './uploads';
+    const fullPath = path.join(uploadsDir, filePath);
+    if (fs.existsSync(fullPath)) {
+      fs.unlinkSync(fullPath);
+      console.log(`🗑️ Deleted uploaded file: ${fullPath}`);
+    }
+
+    // Step 3: Delete split folder (text/pdf/json)
+    const baseOutputPath = process.env.OUTPUT_PATH || './outputs';
+    const baseName = path.basename(filePath, path.extname(filePath)); // remove extension
+    const splitFolder = path.join(baseOutputPath, session_id, `${baseName}-${documentId}`);
+    if (fs.existsSync(splitFolder)) {
+      fs.rmSync(splitFolder, { recursive: true, force: true });
+      console.log(`🧹 Deleted split folder: ${splitFolder}`);
+    } else {
+      console.log("⚠️ Split folder does not exist:", splitFolder);
+    }
+
+    // Step 4: Delete from TF_ingestion_CleanedPDF
+    await pool.request()
+      .input('docId', sql.UniqueIdentifier, documentId)
+      .query(`DELETE FROM TF_ingestion_CleanedPDF WHERE document_id = @docId`);
+
+    // Step 5: Delete from TF_ingestion_CleanedOCR
+    await pool.request()
+      .input('docId', sql.UniqueIdentifier, documentId)
+      .query(`DELETE FROM TF_ingestion_CleanedOCR WHERE document_id = @docId`);
+
+    // Step 6: Delete raw record
+    await pool.request()
+      .input('documentId', sql.UniqueIdentifier, documentId)
+      .query(`DELETE FROM ingestion_document_raw WHERE id = @documentId`);
+
+    console.log(`✅ Fully deleted document: ${documentId}`);
+    return { success: true };
+
+  } catch (err) {
+    console.error("🔥 Error during deleteDocument:", err);
+    throw err;
   }
+}
+
+
+
 
   static async saveCleanedDocument(cleanedData) {
     try {

@@ -1,0 +1,90 @@
+Here is the extracted text from the image:
+
+---
+
+الإمارات العربية المتحدة  
+UNITED ARAB EMIRATES  
+وزارة الداخلية  
+Ministry of Interior  
+الإدارة العامة للإقامة وشؤون الأجانب  
+General Directorate of Residency and  
+Foreigners Affairs  
+
+Date: 10/07/2022, 17:28  
+
+الضمان:  
+No: 21057691758  
+دبي/ رسوم: 145.00  
+
+تحقيق الجسمة مقدمة  
+لضمان المغادرة  
+
+يرجى عمل خروج لضمان استرجاع  
+الضمان  
+
+Barcode: 018807006  
+
+---
+
+Everything appears intact per the original format, including Arabic text, English subtext, numerical values, and the presence of the barcode.
+
+**Extracted Text:**
+
+---
+
+**Track and Trace**  
+Sl.No | Item Number | AWB Number | Status | Date | Update By | Remarks  
+1 | 22519903 | 2043904306 | At hub | 31-Jul-2021 11:36:32 | Mohamed Ali / 4899 | The item picked up from BR-Al Bateen (ADIB). by John Cabalog / 101  
+
+---
+
+**Pickup Details**  
+Pickup Location: BR-Al Bateen (ADIB).  
+Department: Mail Section  
+Contact Person: SUMITOMO MITSUI BANKING CORP  
+Address: DHL JAPAN  
+Email:  
+Contact Number: 0  
+Emirates: DUBAI  
+Courier: John Cabalog / 101  
+
+---
+
+**Delivery Details**  
+Internal Mail: BR-Al Bateen (ADIB).  
+Department: Trade Finance Ops  
+Contact Person: TFD  
+Address: Baynunah street, al bateen, near Inter continental hotel  
+Email:  
+Contact Number: 02  
+Contact Number 2:  
+Other Reference: ILCAE00221000098 GEEN OASIS CO LLC USD 60594.40  
+Emirates: ABU DHABI  
+Country: UNITED ARAB EMIRATES  
+City:  
+Delivered To:  
+Delivery Date:  
+Receiver ID:  
+
+---
+
+**Item Details**  
+Is return Item: No  
+Is urgent Pickup: No  
+Special Instructions:  
+Weight (gm): 500  
+Height (cm): 0  
+Length (cm): 0  
+Width (cm): 0  
+Item Count: 1  
+RTS (Return to Sender): No  
+Document type: Document  
+Dispatch Key:  
+
+---
+
+**Audit Trail**  
+Created By: Mohamed Ali  
+Created Date: 31-Jul-2021 11:36:32  
+
+---

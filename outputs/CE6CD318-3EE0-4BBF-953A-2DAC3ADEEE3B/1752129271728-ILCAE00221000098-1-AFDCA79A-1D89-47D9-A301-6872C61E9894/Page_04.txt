@@ -1,0 +1,20 @@
+```
+29/04/21-17:26:47                  TFDPrinter-0891-000001                               4
+_________________________________________________________________________________________
+
+                                INSTRUCTIONS.
+                  72Z: Sender to Receiver Information
+                  KINDLY ACKNOWLEDGE RECEIPT.
+
+------------------------- Message Trailer -------------------------
+{CHK:48FB301CDF4}
+PKI Signature: MAC-Equivalent
+
+------------------------- Interventions -------------------------
+Category        : Network Report
+Creation Time   : 29/04/21 17:26:35
+Application     : SWIFT Interface
+Operator        : SYSTEM
+Text
+{1:F21ABDIAEADAXXX0153944873}{4:{177:2104291726}{451:0}{108:1619699496468609}}
+```

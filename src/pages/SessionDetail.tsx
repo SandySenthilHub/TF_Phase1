@@ -29,7 +29,9 @@ import DocumentComparator from '../components/Documents/DocumentComparator';
 
 const SessionDetail: React.FC = () => {
 
-  const { sessionId: paramSessionId } = useParams<{ sessionId: string }>();
+  const { sessionId: paramSessionId, documentId: paramDocumentId } = useParams<{ sessionId: string; documentId: string }>();
+
+  const [documentId, setDocumentId] = useState(localStorage.getItem("documentId") || "");
   const [sessionId, setSessionId] = useState(paramSessionId || localStorage.getItem("sessionId") || "");
   const navigate = useNavigate();
   const { currentSession, setCurrentSession, updateSessionStatus } = useSessionStore();
@@ -44,7 +46,7 @@ const SessionDetail: React.FC = () => {
     isLoading
   } = useDocumentStore();
 
-  const [activeTab, setActiveTab] = useState<'documents' | 'splitted' | 'fields' | 'review' | 'final'>('documents');
+  const [activeTab, setActiveTab] = useState<'documents' | 'splitted' | 'grouped' | 'catalog' | 'final'>('documents');
   const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [sessionFrozen, setSessionFrozen] = useState(false);
@@ -57,8 +59,14 @@ const SessionDetail: React.FC = () => {
   const [activeFieldDoc, setActiveFieldDoc] = useState<string | null>(null);
   const [fieldData, setFieldData] = useState<Record<string, string> | null>(null);
   const [fieldLoading, setFieldLoading] = useState(false);
-  const [fieldError, setFieldError] = useState<string | null>(null);
+  const [groupedDocs, setGroupedDocs] = useState([]);
 
+  const [groupedResults, setGroupedResults] = useState<any[]>([]);
+  const [groupedLoading, setGroupedLoading] = useState(false);
+
+
+  const [catalogedResults, setCatalogedResults] = useState([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
 
   const [showViewer, setShowViewer] = useState(false);
 
@@ -189,7 +197,7 @@ const SessionDetail: React.FC = () => {
     }
 
     setIsProcessing(false);
-    setActiveTab('review');
+    setActiveTab('catalog');
   };
 
   const getStatusColor = (status: string) => {
@@ -246,6 +254,7 @@ const SessionDetail: React.FC = () => {
         return;
       }
 
+      // 🔹 Step 1: Split the document
       const splitRes = await fetch(`http://localhost:3000/api/documents/split/${docData.sessionId}`, {
         method: "POST",
         headers: {
@@ -254,7 +263,7 @@ const SessionDetail: React.FC = () => {
         body: JSON.stringify({
           filePath: docData.filePath,
           documentId: documentId,
-          ocrMethod: ocrMethod // <-- Passed from UI dropdown
+          ocrMethod: ocrMethod,
         }),
       });
 
@@ -265,9 +274,48 @@ const SessionDetail: React.FC = () => {
         alert(`✅ Split Success: ${splitData.message}`);
         setActiveSplitDocId(documentId);
         setSplitResults(splitData.files || []);
+        localStorage.setItem("documentId", documentId);
+
+        // 🕒 Delay to ensure split results are saved
         setTimeout(() => {
           fetchSplitResultsForDoc(docData.sessionId);
         }, 1500);
+
+        // 🔹 Step 2: Grouping
+        const groupRes = await fetch(
+          `http://localhost:3000/api/documents/group/${docData.sessionId}/${documentId}`,
+          { method: "POST" }
+        );
+
+        const groupData = await groupRes.json();
+        console.log("🧩 Grouping response:", groupData);
+
+        if (groupRes.ok) {
+          alert("✅ Grouping completed successfully.");
+
+          // 🔹 Step 3: Cataloging
+          const catalogRes = await fetch(`http://localhost:3000/api/documents/catalog`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              session_id: docData.sessionId,
+              document_id: documentId,
+            }),
+          });
+
+          const catalogData = await catalogRes.json();
+          console.log("📚 Cataloging response:", catalogData);
+
+          if (catalogRes.ok) {
+            alert("📚 Cataloging completed.");
+          } else {
+            alert("⚠️ Cataloging failed: " + catalogData?.error);
+          }
+        } else {
+          alert(`⚠️ Grouping failed: ${groupData.error}`);
+        }
       } else {
         alert(`❌ Split Failed: ${splitData.error}`);
       }
@@ -279,9 +327,91 @@ const SessionDetail: React.FC = () => {
   };
 
 
-  const [splittedDocs, setSplittedDocs] = useState([]);
-  const [ocrMethod, setOcrMethod] = useState("tesseract");
 
+
+
+  function getGroupedDocuments(sessionId: string, documentId: string) {
+    console.log("📡 Fetching grouped documents with:");
+    console.log("   Session ID:", sessionId);
+    console.log("   Document ID:", documentId);
+
+    const basePath = `http://localhost:3000/grouped/${sessionId}/${documentId}`;
+
+    return fetch(`http://localhost:3000/api/documents/grouped-files/${sessionId}/${documentId}`)
+      .then(res => res.json())
+      .then(async (data) => {
+        const formNames = data.forms || [];
+        console.log("📄 Found grouped forms:", formNames);
+
+        const docs = await Promise.all(
+          formNames.map((formName) => {
+            const pdfUrl = `${basePath}/${formName}/document.pdf`;
+            const textUrl = `${basePath}/${formName}/text.txt`;
+            // const fieldsUrl = `${basePath}/${formName}/fields.json`; // Uncomment if needed
+
+            return Promise.all([
+              fetch(pdfUrl),
+              fetch(textUrl),
+              // fetch(fieldsUrl),
+            ])
+              .then(async ([pdfRes, textRes]) => {
+                const pdfOk = pdfRes.ok;
+                const text = textRes.ok ? await textRes.text() : "";
+                // const fields = fieldsRes.ok ? await fieldsRes.json() : {};
+
+                return {
+                  formName,
+                  pdfUrl: pdfOk ? pdfUrl : null,
+                  ocrText: text,
+                  // fieldsJson: fields,
+                };
+              })
+              .catch((err) => {
+                console.error(`❌ Error fetching grouped document ${formName}`, err);
+                return null;
+              });
+          })
+        );
+
+        return docs.filter(Boolean);
+      })
+      .catch((err) => {
+        console.error("❌ Failed to load form names:", err);
+        return [];
+      });
+  }
+
+
+
+
+
+  useEffect(() => {
+    if (sessionId && documentId) {
+      getGroupedDocuments(sessionId, documentId).then((docs) => {
+        setGroupedDocs(docs);
+      });
+    }
+  }, [sessionId, documentId]);
+
+
+  useEffect(() => {
+    if (sessionId && documentId) {
+      console.log("🚀 Calling getGroupedDocuments()");
+      getGroupedDocuments(sessionId, documentId).then((docs) => {
+        console.log("📦 Grouped docs loaded:", docs);
+        setGroupedDocs(docs);
+      });
+    } else {
+      console.warn("❌ sessionId or documentId is missing:");
+      console.log("   sessionId:", sessionId);
+      console.log("   documentId:", documentId);
+    }
+  }, [sessionId, documentId]);
+
+
+
+  const [splittedDocs, setSplittedDocs] = useState([]);
+  const [ocrMethod, setOcrMethod] = useState("azure");
 
   useEffect(() => {
     if (paramSessionId) {
@@ -289,6 +419,13 @@ const SessionDetail: React.FC = () => {
       localStorage.setItem("sessionId", paramSessionId);
     }
   }, [paramSessionId]);
+
+  useEffect(() => {
+    if (paramDocumentId) {
+      setDocumentId(paramDocumentId);
+      localStorage.setItem("sessionId", paramDocumentId);
+    }
+  }, [paramDocumentId]);
 
 
 
@@ -350,39 +487,65 @@ const SessionDetail: React.FC = () => {
     }
   };
 
-  const handleRunOCR = async (documentId: string, file: File) => {
+  async function fetchGroupedResultsForDoc(sessionId: string, documentId: string) {
+    if (!sessionId || !documentId) return;
+
+    setGroupedLoading(true);
+    setGroupedResults([]);
+
     try {
-      const sessionId = localStorage.getItem("sessionId");
-      if (!sessionId) {
-        alert("Session ID not found.");
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("ocrEngine", ocrEngine); // from selector
-      formData.append("sessionId", sessionId);
-      formData.append("documentId", documentId);
-
-      const res = await fetch("http://localhost:3000/api/documents/ocr-process", {
-        method: "POST",
-        body: formData,
-      });
-
+      const res = await fetch(`http://localhost:3000/api/documents/grouped-files/${sessionId}/${documentId}`);
       const data = await res.json();
+      const formNames = data.forms || [];
 
-      if (res.ok) {
-        alert("✅ OCR and splitting completed.");
-        // Refresh split results automatically if needed
-        fetchSplitResultsForDoc(documentId);
-      } else {
-        alert("❌ OCR Failed: " + data.error);
-      }
-    } catch (err: any) {
-      console.error("OCR error:", err);
-      alert("❌ Error: " + err.message);
+      const basePath = `http://localhost:3000/grouped/${sessionId}/${documentId}`;
+
+      const docs = await Promise.all(
+        formNames.map(async (formName) => {
+          const pdfUrl = `${basePath}/${formName}/document.pdf`;
+          const textUrl = `${basePath}/${formName}/text.txt`;
+
+          const [pdfRes, textRes] = await Promise.all([fetch(pdfUrl), fetch(textUrl)]);
+          const pdfOk = pdfRes.ok;
+          const text = textRes.ok ? await textRes.text() : "";
+
+          return {
+            formName,
+            pdfUrl: pdfOk ? pdfUrl : null,
+            ocrText: text
+          };
+        })
+      );
+
+      setGroupedResults(docs.filter(Boolean));
+    } catch (err) {
+      console.error("❌ Failed to fetch grouped documents:", err);
+    } finally {
+      setGroupedLoading(false);
     }
-  };
+  }
+
+  useEffect(() => {
+    if (sessionId && activeSplitDocId) {
+      fetchGroupedResultsForDoc(sessionId, activeSplitDocId);
+    }
+  }, [activeSplitDocId, sessionId]);
+
+
+  useEffect(() => {
+    if (activeTab === 'catalog' && sessionId && documentId) {
+      setCatalogLoading(true);
+      fetch(`http://localhost:3000/api/documents/cataloged-documents/${sessionId}/${documentId}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) {
+            setCatalogedResults(data.data);
+          }
+        })
+        .catch((err) => console.error("Catalog fetch error:", err))
+        .finally(() => setCatalogLoading(false));
+    }
+  }, [activeTab, sessionId, documentId]);
 
 
 
@@ -406,29 +569,40 @@ const SessionDetail: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    if (splitResults.length > 0 && !activeFieldDoc) {
+      const firstFileName = splitResults[0].fileName;
+      handleFieldTabClick(firstFileName);
+    }
+  }, [splitResults]);
+
   const [ocrEngine, setOcrEngine] = useState("tesseract");
 
-  const OCRSelector = ({selectedEngine,onChange,}: {
+  type OCRSelectorProps = {
     selectedEngine: string;
     onChange: (value: string) => void;
-  }) => {
-    return (
+  };
 
+  const OCRSelector: React.FC<OCRSelectorProps> = ({ selectedEngine, onChange }) => {
+    return (
       <div className="mb-4 mt-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label className="block text-sm font-medium text-gray-700 dark:text-white mb-1">
           Select OCR Engine
         </label>
         <select
-          value={ocrMethod}
-          onChange={(e) => setOcrMethod(e.target.value)}
-          className="w-full md:w-56 p-2 border border-gray-300 rounded shadow-sm text-sm"
+          value={selectedEngine}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full md:w-56 p-2 border border-gray-300 rounded shadow-sm text-sm dark:bg-gray-800 dark:border-gray-600 dark:text-white"
         >
+          <option value="azure">Azure Document Intelligence (default)</option>
           <option value="tesseract">Tesseract OCR</option>
-          <option value="azure">Azure Document Intelligence</option>
+          <option value="openai">Azure OpenAI Vision (GPT-4o)</option>
         </select>
       </div>
     );
   };
+
+
 
 
 
@@ -544,7 +718,7 @@ const SessionDetail: React.FC = () => {
       {/* Quick Actions */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
         <h3 className="text-lg font-semibold text-slate-900 mb-4">Quick Actions</h3>
-        <OCRSelector selectedEngine={ocrEngine} onChange={setOcrEngine} />
+        <OCRSelector selectedEngine={ocrMethod} onChange={setOcrMethod} />
 
         <div className="flex flex-wrap gap-3">
           {documents.some(d => d.status === 'uploaded') && (
@@ -588,10 +762,10 @@ const SessionDetail: React.FC = () => {
           <nav className="flex space-x-8 px-6">
             {[
               { id: 'documents', label: 'Documents', icon: FileText, count: documents.length },
-              { id: 'splitted', label: 'Splitted Docs', icon: Layers, count: splittedDocs.length },  // ✅ NEW
+              { id: 'splitted', label: 'Splitted Docs', icon: Layers },  // ✅ NEW
 
-              { id: 'fields', label: 'Field Extraction', icon: Settings, count: documents.filter(d => d.extractedFields?.length > 0).length },
-              { id: 'review', label: 'Review & Edit', icon: Eye, count: 0 },
+              { id: 'grouped', label: 'Grouped Docs', icon: Settings },
+              { id: 'catalog', label: 'Cataloged Docs', icon: Eye, count: 0 },
               { id: 'final', label: 'Final Review', icon: Check, count: 0 }
             ].map((tab) => (
               <button
@@ -650,9 +824,11 @@ const SessionDetail: React.FC = () => {
                             day: 'numeric',
                             hour: '2-digit',
                             minute: '2-digit',
-                            second: '2-digit'
-                          })}                        </p>
+                            second: '2-digit',
+                          })}
+                        </p>
                       </div>
+
                       <div className="flex flex-col items-end space-y-1">
                         <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(document.status)}`}>
                           {document.status}
@@ -665,71 +841,74 @@ const SessionDetail: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => {
-                          setSelectedDocument(document.Id);
-                          setShowViewer(true); // <-- this line is important
-                        }}
-                        className="flex-1 bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700 transition-colors flex items-center justify-center space-x-1"
-                      >
-                        <Eye size={16} />
-                        <span>View</span>
-                      </button>
+                    {/* ✅ Preview Image or PDF */}
+                    {document.FileType?.startsWith('image/') ? (
+                      <img
+                        src={document.FilePath || `/uploads/${document.FileName}`}
+                        alt={document.FileName}
+                        className="mt-3 w-full h-auto max-h-64 rounded-lg border border-slate-200 object-contain cursor-pointer"
+                        onClick={() => window.open(document.FilePath || `/uploads/${document.FileName}`, '_blank')}
+                      />
+                    ) : document.FileType?.includes('pdf') ? (
+                      <div className="mt-3 cursor-pointer" onClick={() => window.open(document.FilePath || `/uploads/${document.FileName}`, '_blank')}>
+                        <embed
+                          src={document.FilePath || `/uploads/${document.FileName}`}
+                          type="application/pdf"
+                          className="w-full h-64 rounded-lg border border-slate-200"
+                        />
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-500 italic mt-2">No preview available</p>
+                    )}
+
+                    {/* ✅ Action buttons */}
+                    <div className="flex items-center space-x-2 mt-4">
                       <button
                         onClick={() => runSplitDocument(document.Id)}
-                        className={`flex-1 bg-yellow-600 text-white px-3 py-2 rounded text-sm transition-colors flex items-center justify-center space-x-1
-                         ${splittingDocId === document.Id ? 'opacity-50 cursor-not-allowed' : 'hover:bg-yellow-700'}`}
+                        className={`flex-1 bg-blue-600 text-white px-3 py-2 rounded text-sm transition-colors flex items-center justify-center space-x-1
+                           ${splittingDocId === document.Id ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
                         disabled={splittingDocId === document.Id}
                       >
                         {splittingDocId === document.Id ? (
                           <>
                             <RefreshCw className="animate-spin" size={16} />
-                            <span>Splitting...</span>
+                            <span>Processing...</span>
                           </>
                         ) : (
-                          <span>Split</span>
+                          <span>Start Process</span>
                         )}
                       </button>
 
+                      {document.status === 'uploaded' && (
+                        <button
+                          onClick={() => handleProcessDocument(document.Id)}
+                          disabled={isProcessing}
+                          className="flex-1 bg-green-600 text-white px-3 py-2 rounded text-sm hover:bg-green-700 transition-colors flex items-center justify-center space-x-1 disabled:opacity-50"
+                        >
+                          <RefreshCw size={16} className={isProcessing ? 'animate-spin' : ''} />
+                          <span>Process</span>
+                        </button>
+                      )}
 
-
-
-                      {
-                        document.status === 'uploaded' && (
+                      {document.status === 'processed' && (
+                        <div className="flex space-x-1">
                           <button
-                            onClick={() => handleProcessDocument(document.Id)}
-                            disabled={isProcessing}
-                            className="flex-1 bg-green-600 text-white px-3 py-2 rounded text-sm hover:bg-green-700 transition-colors flex items-center justify-center space-x-1 disabled:opacity-50"
+                            onClick={() => handleValidateDocument(document.Id, true)}
+                            className="bg-green-600 text-white px-3 py-2 rounded text-sm hover:bg-green-700 transition-colors"
+                            title="Validate & Extract Fields"
                           >
-                            <RefreshCw size={16} className={isProcessing ? 'animate-spin' : ''} />
-                            <span>Process</span>
+                            <Check size={16} />
                           </button>
-                        )
-                      }
+                          <button
+                            onClick={() => handleValidateDocument(document.Id, false)}
+                            className="bg-red-600 text-white px-3 py-2 rounded text-sm hover:bg-red-700 transition-colors"
+                            title="Reject & Reprocess"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      )}
 
-                      {
-                        document.status === 'processed' && (
-                          <div className="flex space-x-1">
-                            <button
-                              onClick={() => handleValidateDocument(document.Id, true)}
-                              className="bg-green-600 text-white px-3 py-2 rounded text-sm hover:bg-green-700 transition-colors"
-                              title="Validate & Extract Fields"
-                            >
-                              <Check size={16} />
-                            </button>
-                            <button
-                              onClick={() => handleValidateDocument(document.Id, false)}
-                              className="bg-red-600 text-white px-3 py-2 rounded text-sm hover:bg-red-700 transition-colors"
-                              title="Reject & Reprocess"
-                            >
-                              <X size={16} />
-                            </button>
-                          </div>
-                        )
-                      }
-
-                      {/* Delete button - only show if session is not frozen/completed */}
                       {currentSession?.status !== 'frozen' && currentSession?.status !== 'completed' && (
                         <button
                           onClick={() => setShowDeleteConfirm(document.Id)}
@@ -741,7 +920,8 @@ const SessionDetail: React.FC = () => {
                       )}
                     </div>
 
-                    {document.extractedFields && document.extractedFields.length > 0 && (
+                    {/* ✅ Metadata sections */}
+                    {document.extractedFields?.length > 0 && (
                       <div className="mt-3 pt-3 border-t border-slate-200">
                         <p className="text-xs text-slate-500">
                           Fields extracted: {document.extractedFields.length}
@@ -749,7 +929,7 @@ const SessionDetail: React.FC = () => {
                       </div>
                     )}
 
-                    {document.iterations && document.iterations.length > 0 && (
+                    {document.iterations?.length > 0 && (
                       <div className="mt-3 pt-3 border-t border-slate-200">
                         <p className="text-xs text-slate-500">
                           Iterations: {document.iterations.length}
@@ -759,6 +939,7 @@ const SessionDetail: React.FC = () => {
                   </div>
                 ))}
               </div>
+
             </div>
           )}
 
@@ -768,7 +949,7 @@ const SessionDetail: React.FC = () => {
             <div className="space-y-6">
               <h2 className="text-xl font-semibold text-slate-900">Splitted Documents</h2>
 
-              {/* ⬇️ MOVE the dropdown here */}
+              {/* Dropdown for selecting a document */}
               <select
                 onChange={(e) => fetchSplitResultsForDoc(e.target.value)}
                 value={activeSplitDocId || ''}
@@ -782,48 +963,56 @@ const SessionDetail: React.FC = () => {
                 ))}
               </select>
 
-              {/* show split result grid */}
+              {/* Grid of split results */}
               {activeSplitDocId && splitResults.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 gap-8">
                   {splitResults.map((file, index) => (
-                    <div key={index} className="bg-white p-4 rounded shadow">
-                      <h3 className="font-semibold text-slate-800 text-sm truncate">{file.fileName}</h3>
-                      <div className="mt-2 space-x-2">
-                        <a
-                          href={`http://localhost:3000${file.pdfPath}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline text-sm"
-                        >
-                          View PDF
-                        </a>
-                        <a
-                          href={`http://localhost:3000${file.textPath}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-green-600 hover:underline text-sm"
-                        >
-                          View Extracted Text
-                        </a>
-                        <button onClick={() => handleFieldTabClick(file.fileName)}>
-                          View Fields
-                        </button>
+                    <div key={index} className="bg-white rounded-lg shadow p-4 space-y-4 border border-slate-200">
+                      <h3 className="text-slate-800 font-medium text-sm truncate">{file.fileName}</h3>
+
+                      {/* Grid layout: PDF on left, text on right */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* PDF Preview */}
+                        <iframe
+                          src={`http://localhost:3000${file.pdfPath}`}
+                          title={`PDF Preview ${file.fileName}`}
+                          className="w-full h-64 border rounded"
+                        ></iframe>
+
+                        {/* Extracted Text */}
+                        <div className="bg-gray-50 border rounded p-3 overflow-y-auto h-64 text-xs font-mono whitespace-pre-wrap">
+                          <strong className="block text-gray-700 mb-2">Extracted Text</strong>
+                          <iframe
+                            src={`http://localhost:3000${file.textPath}`}
+                            className="w-full h-full bg-white"
+                          ></iframe>
+                        </div>
                       </div>
 
-                      {activeFieldDoc === file.fileName && (
-                        <div className="mt-4 bg-gray-100 p-3 rounded text-sm text-gray-800 max-h-60 overflow-y-auto">
-                          {fieldLoading ? (
-                            <p>Loading fields...</p>
-                          ) : fieldData && Object.keys(fieldData).length > 0 ? (
-                            <ul className="space-y-1">
-                              {Object.entries(fieldData).map(([key, value]) => (
-                                <li key={key}><strong>{key}:</strong> {String(value)}</li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <p>No fields found.</p>
-                          )}
-                        </div>
+                      {/* Fields Preview */}
+                      <div className="bg-gray-100 p-3 rounded text-sm text-gray-800 max-h-64 overflow-y-auto border border-gray-200">
+                        <strong className="block mb-2">Extracted Fields</strong>
+                        {fieldLoading ? (
+                          <p>Loading fields...</p>
+                        ) : activeFieldDoc === file.fileName && fieldData && Object.keys(fieldData).length > 0 ? (
+                          <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                            {Object.entries(fieldData).map(([key, value]) => (
+                              <li key={key}><strong>{key}:</strong> {String(value)}</li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p>No fields found for this page.</p>
+                        )}
+                      </div>
+
+                      {/* Auto trigger field fetch */}
+                      {activeFieldDoc !== file.fileName && (
+                        <button
+                          onClick={() => handleFieldTabClick(file.fileName)}
+                          className="text-blue-600 text-sm underline"
+                        >
+                          Load Fields
+                        </button>
                       )}
                     </div>
                   ))}
@@ -839,42 +1028,100 @@ const SessionDetail: React.FC = () => {
           )}
 
 
+          {activeTab === 'grouped' && (
+            <div className="space-y-6">
+              <h2 className="text-xl font-semibold text-slate-900">Grouped Documents</h2>
 
-          {activeTab === 'fields' && (
-            <div className="mt-4 p-4 bg-white rounded shadow">
-              <h2 className="font-bold text-lg mb-2">Extracted Fields for: {activeFieldDoc}</h2>
+              {groupedLoading ? (
+                <p>Loading grouped documents...</p>
+              ) : groupedResults.length > 0 ? (
+                <div className="grid grid-cols-1 gap-8">
+                  {groupedResults.map((doc, index) => (
+                    <div key={index} className="bg-white rounded-lg shadow p-4 space-y-4 border border-slate-200">
+                      <h3 className="text-slate-800 font-medium text-sm truncate">{doc.formName}</h3>
 
-              {fieldLoading ? (
-                <p>Loading fields...</p>
-              ) : fieldData && Object.keys(fieldData).length > 0 ? (
-                <table className="table-auto w-full text-sm border">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="px-4 py-2 text-left border">Field</th>
-                      <th className="px-4 py-2 text-left border">Value</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(fieldData).map(([key, value], i) => (
-                      <tr key={i}>
-                        <td className="border px-4 py-2">{key}</td>
-                        <td className="border px-4 py-2">{value}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* PDF Preview */}
+                        <iframe
+                          src={doc.pdfUrl}
+                          title={`PDF Preview ${doc.formName}`}
+                          className="w-full h-64 border rounded"
+                        ></iframe>
+
+                        {/* OCR Text */}
+                        <div className="bg-gray-50 border rounded p-3 overflow-y-auto h-64 text-xs font-mono whitespace-pre-wrap">
+                          <strong className="block text-gray-700 mb-2">Extracted Text</strong>
+                          {doc.ocrText}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : (
-                <p>No fields found.</p>
+                <div className="text-slate-500 text-sm">
+                  {activeSplitDocId
+                    ? 'No grouped results available for this document.'
+                    : 'Select a document in "Splitted" tab to view grouped results.'}
+                </div>
               )}
             </div>
           )}
 
-          {activeTab === 'review' && (
-            <DocumentComparator
-              documents={documents.filter(d => d.extractedFields?.length > 0)}
-              sessionId={sessionId!}
-            />
+
+
+          {activeTab === 'catalog' && (
+            <div className="space-y-6">
+              <h2 className="text-xl font-semibold text-slate-900">Cataloged Documents</h2>
+
+              {catalogLoading ? (
+                <p>Loading cataloged documents...</p>
+              ) : catalogedResults.length > 0 ? (
+                <div className="overflow-x-auto rounded-lg shadow border border-slate-200 bg-white">
+                  <table className="min-w-full table-auto text-sm text-slate-800">
+                    <thead className="bg-slate-100 text-slate-700 text-left">
+                      <tr>
+                        <th className="px-4 py-2 border">#</th>
+                        <th className="px-4 py-2 border">Form Type</th>
+                        <th className="px-4 py-2 border">Matched Name</th>
+                        <th className="px-4 py-2 border">Confidence</th>
+                        <th className="px-4 py-2 border">Cataloged At</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {catalogedResults.map((doc, index) => (
+                        <tr key={doc.id} className="hover:bg-slate-50">
+                          <td className="px-4 py-2 border">{index + 1}</td>
+                          <td className="px-4 py-2 border">{doc.grouped_form_type}</td>
+                          <td className="px-4 py-2 border">
+                            {doc.matched_document_name || (
+                              <span className="text-slate-400 italic">Not matched</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2 border">
+                            {typeof doc.confidence_score === 'number'
+                              ? doc.confidence_score.toFixed(2)
+                              : '—'}
+                          </td>
+                          <td className="px-4 py-2 border">
+                            {new Date(doc.cataloged_at).toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-slate-500 text-sm">
+                  {activeSplitDocId
+                    ? 'No cataloged results available for this document.'
+                    : 'Select a document in "Splitted" tab to view cataloged results.'}
+                </div>
+              )}
+            </div>
           )}
+
+
+
 
           {activeTab === 'final' && (
             <div className="space-y-6">

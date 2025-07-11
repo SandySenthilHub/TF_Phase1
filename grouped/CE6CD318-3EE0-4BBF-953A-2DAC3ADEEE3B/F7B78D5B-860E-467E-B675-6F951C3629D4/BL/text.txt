@@ -1,0 +1,251 @@
+Below is the extracted text from the image, presented in the same format as found in the document:
+
+---
+
+**BILL OF LADING**  
+**(Non-Negotiable unless Consigned "To Order")**  
+
+FIRST ORIGIN:  
+**SHIPPER/CONSIGNOR (COMPLETE NAME AND ADDRESS)**  
+MITSUI AND CO. LTD.,  
+2-1, OTEMACHI 1-CHOME,  
+CHIYODA-KU TOKYO, JAPAN  
+AS CONSIGNOR B7WE-20-5130-X  
+
+**BOOKING NO.**  
+2122490880  
+**BILL OF LADING NO.**  
+OOLJ2122490880  
+**EXPORT REFERENCES**  
+
+---
+
+**CONSIGNEE (COMPLETE NAME AND ADDRESS)**  
+TO THE ORDER OF  
+ABU DHABI ISLAMIC BANK, U.A.E.  
+
+---
+
+**FORWARDING AGENT - REFERENCES**  
+FMC NO.:  
+
+**POINT AND COUNTRY OF ORIGIN OF GOODS**  
+
+---
+
+**NOTIFY PARTY (COMPLETE NAME AND ADDRESS)**  
+GREEN OASIS CO. LLC,  
+P.O. BOX 1297, AL AIN, UAE  
+TEL: 037511332 FAX 037511533  
+
+**ALSO NOTIFY PARTY - ROUTING & INSTRUCTIONS**  
+++ U.A.E  
+
+---
+
+**PRE-CARRIAGE BY**  
+**PLACE OF RECEIPT**  
+YOKOHAMA, JAPAN  
+
+**VESSEL/VOYAGE FLAG**  
+SPECTRUM N 0155  
+
+**PORT OF LOADING**  
+YOKOHAMA, JAPAN  
+
+**PORT OF DISCHARGE**  
+ABU DHABI SEAPORT, ++  
+
+**PLACE OF DELIVERY**  
+ABU DHABI SEAPORT, ++  
+
+**LOADING TERMINAL**  
+
+**ORIGINALS TO BE RELEASED AT**  
+TOKYO  
+
+**TYPE OF MOVEMENT IF MIXED, USE DESCRIPTION OF PACKAGES AND GOODS FIELD**  
+
+**FCL / FCL**  
+
+**CY/CY**  
+
+---
+
+**(CHECK "X" COLUMN IF HAZARDOUS MATERIAL)**  
+
+---
+
+**PARTICULARS DECLARED BY SHIPPER BUT NOT ACKNOWLEDGED BY THE CARRIER**  
+
+**CONTAINER NOS./SEAL NOS. MARK NUMBERS**  
+OOLU8747600 / OOLU436003  
+
+---
+
+**QUANTITY DESCRIPTION OF GOODS**  
+3 PALLETS / FCL/FCL / 20RF  
+
+---
+
+**GROSS WEIGHT**  
+1920 KGS  
+
+**MEASUREMENT**  
+5.663 CBM  
+
+---
+
+---
+
+KANEMITE SC-1500  
+GREEN OASIS CO.  
+PALLETS (PACKING 500 ML). PESTICIDES.  
+P.O. BOX 1297 ABU DHABI TEL: 037511332 FAX: 037511533  
+LC NUMBER: TICAO8221000098  
+FREIGHT PREPAID  
+1 CONTAINER  
+3 PALLETS (150 CARTONS)  
+HS CODE: 3808.91-00  
+NO. 3  
+BATCH NO. K2102UA  
+MANUFACTURING DATE: MAR. 2021  
+EXPIRY DATE: FEB. 2024  
+MADE IN JAPAN  
+
+---
+
+**TO BE CONTINUED ON ATTACHED LIST**  
+
+---
+
+**NOTICE:**  
+1. Freight charges are payable as per the terms of Section 482 of American COGSA and/or per the applicable terms under the governing carriage rules specified by law or the Merchant.  
+2. Handling charges, if incurred to dealer's liability, shall be limited as per the agreement.  
+3. Additional declarations under Merchant instructions are subjected to inspection terms and will be treated separately.  
+
+**Declared Cargo Value USD**  
+If Merchant enters a value, Carrier’s limitation of liability shall not apply and the ad valorem rate will be charged.  
+
+---
+
+**CODE TARIFF ITEM FREIGHTED AS RATE PREPAID COLLECT SERVICE CONTRACT NO DOC FORM NO COMMODITY CODE**  
+
+---
+
+DATE TAKEN ON BOARD:  
+**1 JULY 2021**  
+
+DATED:  
+**1 JULY 2021**  
+
+---
+
+**SIGNED BY Orient Overseas Container Line as Carrier.**
+
+--- 
+
+**End of Extracted Text**
+
+Here is the extracted text from the provided image:
+
+---
+
+**VESSEL: SPECTRUM II**  
+**VOYAGE: 1152**  
+**PAGE: 2 OF 2**  
+**B/L NO.: COM1122C910860**  
+
+-----------------------------------------------------------  
+
+AGRO-KANESHO CO., LTD  
+
+-----------  
+
+OCEAN FREIGHT PREPAID  
+
+TOTAL NO. OF CONTAINERS/PACKAGES RECEIVED & ACKNOWLEDGED BY CARRIER FOR THE PURPOSE OF CALCULATION OF PACKAGE LIMITATION (IF APPLICABLE): 1 CONTAINER(S)/PACKAGE(S)  
+
+DESTINATION CHARGES COLLECT PER LINE TARIFF, AND TO BE COLLECTED FROM THE PARTY WHO LAWFULLY DEMANDS DELIVERY OF THE CARGO.  
+SHIPPER LOAD AND COUNT, CONTAINER(S) SEALED BY SHIPPER  
+
+THE NAME, ADDRESS AND TELEPHONE NUMBER OF THE CARRYING VESSEL AGENT AT THE PORT OF DESTINATION:  
+OOCL (UAE) LLC (ABU DHABI)  
+33RD FLOOR, SKY TOWER,  
+REEM ISLAND,  
+ABU DHABI, UNITED ARAB EMIRATES  
+971 2 6716211  
+
+"SAID TO CONTAIN" "FREIGHT AS ARRANGED"  
+
+"REFRIGERATED CARGO"  
+"REEFER SET TEMPERATURE 15 DEGREE CELSIUS"  
+
+===========================================================  
+
+LADEN ON BOARD: SPECTRUM II 0155  
+PORT OF LOADING: YOKOHAMA, JAPAN  
+DATE: 1 JUL 2021  
+
+SIGNATURE: --- (Illegible mark appears here)  
+
+-----------------------------------------------------------  
+
+SIGNED BY Orient Overseas Container Lines as Carrier  
+
+---  
+
+This has been preserved as per the structure and formatting found in the provided image. Seals, stamps, and signatures were noted accurately.
+
+```
+[Document Header]
+----------------------------
+We take it personally             ORIGINAL             (R)
+
+DATE:    01 JUL 2021
+
+CERTIFICATE
+
+TO WHOM IT MAY CONCERN
+
+VESSEL VOYAGE:      SPECTRUM N                VOY. 015S  
+B/L NO.:            OOLU2122490880      
+B/L ISSUANCE DATE:  01 JUL 2021  
+
+---------------------------------------------------------
+
+WITH REGARD TO THE ABOVE MENTIONED VESSEL  
+WE HEREBY CERTIFY THAT:  
+
+NAME OF THE VESSEL       :  SPECTRUM N  
+FLAG / NATIONALITY       :  LIBERIA  
+YEAR BUILT               :  2009  
+CLASS SOCIETY            :  GL  
+LLOYDS NUMBER (IMO NO)   :  9429314  
+
+WE CERTIFY THAT:  
+
+A) THE VESSEL IS ELIGIBLE TO ENTER INTO PORTS OF UAE IN  
+    CONFORMITY WITH ITS MARITIME LAWS AND PORT REGULATIONS.  
+
+B) SHIPMENT HAS BEEN MADE ON A REGULAR OR CONFERENCE LINE  
+    VESSEL.  
+
+C) VESSEL AGE IS LESS THAN 25 (TWENTY FIVE) OPERATING YEARS OLD  
+    AT THE TIME OF LOADING.  
+
+D) SHIPMENT IS EFFECTED IN CONTAINERS.  
+
+E) THE CARRYING VESSEL (SPECTRUM N) IS ISM (INTERNATIONAL SAFETY MANAGEMENT) CODE  
+    CERTIFIED.  
+
+SHIPPER’S REFERENCE:  
+L/C NUMBER: ILCAE00221000098  
+
+YOURS FAITHFULLY,  
+Orient Overseas Container Line as Carrier ♦  
+
+------------------------------------------------------------
+                         ___________________
+                         An OOIL Group Company
+```

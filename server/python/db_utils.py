@@ -30,42 +30,117 @@ def get_sql_server_connection():
         raise
 
 
-def save_raw_document_to_db(conn, session_id, document_id, filename, pdf_path):
-    with open(pdf_path, 'rb') as f:
-        binary_data = f.read()
-    
-    query = """
-    INSERT INTO ingestion_document_raw_new (session_id, document_id, filename, file_data, uploaded_at)
-    VALUES (?, ?, ?, ?, GETDATE())
-    """
-    cursor = conn.cursor()
-    cursor.execute(query, (session_id, document_id, filename, binary_data))
-    conn.commit()
-
-
-def save_cleaned_documents_to_db(conn, session_id, document_id, form_type, pdf_path, text_path):
-    with open(pdf_path, 'rb') as f_pdf:
-        pdf_data = f_pdf.read()
-    
+def save_cleaned_text_to_db(conn, session_id, document_id, form_type, text_path):
     with open(text_path, 'r', encoding='utf-8') as f_text:
         text_data = f_text.read()
 
     query = """
-    INSERT INTO ingestion_document_cleaned_new (session_id, document_id, form_type, file_data, ocr_text, created_at)
-    VALUES (?, ?, ?, ?, ?, GETDATE())
-    """
-    cursor = conn.cursor()
-    cursor.execute(query, (session_id, document_id, form_type, pdf_data, text_data))
-    conn.commit()
-
-
-def save_extracted_fields_to_db(conn, session_id, document_id, form_type, fields_dict):
-    fields_json = json.dumps(fields_dict, ensure_ascii=False)
-    
-    query = """
-    INSERT INTO ingestion_fields_new (session_id, document_id, form_type, fields_json, extracted_at)
+    INSERT INTO TF_ingestion_CleanedOCR (session_id, document_id, form_type, ocr_text, created_at)
     VALUES (?, ?, ?, ?, GETDATE())
     """
     cursor = conn.cursor()
-    cursor.execute(query, (session_id, document_id, form_type, fields_json))
+    cursor.execute(query, (session_id, document_id, form_type, text_data))
     conn.commit()
+
+def save_cleaned_pdf_to_db(conn, session_id, document_id, form_type, pdf_path):
+    with open(pdf_path, 'rb') as f_pdf:
+        pdf_data = f_pdf.read()
+
+    query = """
+    INSERT INTO TF_ingestion_CleanedPDF (session_id, document_id, form_type, file_data, created_at)
+    VALUES (?, ?, ?, ?, GETDATE())
+    """
+    cursor = conn.cursor()
+    cursor.execute(query, (session_id, document_id, form_type, pdf_data))
+    conn.commit()
+
+def save_extracted_fields_to_db(conn, session_id, document_id, form_type, fields_dict):
+    cursor = conn.cursor()
+
+    now = "GETDATE()"  # Use server time
+
+    delta_query = """
+    INSERT INTO TF_fields_delta (session_id, document_id, form_type, field_key, extracted_at)
+    VALUES (?, ?, ?, ?, GETDATE())
+    """
+
+    kv_query = """
+    INSERT INTO TF_fields_KeyValuePair (session_id, document_id, form_type, field_key, field_value, extracted_at)
+    VALUES (?, ?, ?, ?, ?, GETDATE())
+    """
+
+    for key, value in fields_dict.items():
+        # Save key only to TF_fields_delta
+        cursor.execute(delta_query, (session_id, document_id, form_type, key))
+
+        # Save key-value to TF_fields_KeyValuePair
+        cursor.execute(kv_query, (session_id, document_id, form_type, key, str(value)))
+
+    conn.commit()
+    
+    
+    
+    
+
+
+# Function for grouping 
+
+def get_cleaned_split_data(conn, session_id, document_id):
+    query = """
+        SELECT 
+            pdf.form_type,
+            pdf.file_data AS pdf_data,
+            ocr.ocr_text,
+            fields.fields_json
+        FROM TF_ingestion_CleanedPDF AS pdf
+        INNER JOIN TF_ingestion_CleanedOCR AS ocr
+            ON pdf.session_id = ocr.session_id AND pdf.document_id = ocr.document_id AND pdf.form_type = ocr.form_type
+        INNER JOIN ingestion_fields_new AS fields
+            ON pdf.session_id = fields.session_id AND pdf.document_id = fields.document_id AND pdf.form_type = fields.form_type
+        WHERE pdf.session_id = ? AND pdf.document_id = ?
+        ORDER BY pdf.form_type;
+    """
+    cursor = conn.cursor()
+    cursor.execute(query, (session_id, document_id))
+    rows = cursor.fetchall()
+
+    result = []
+    for row in rows:
+        result.append({
+            "form_type": row.form_type,
+            "pdf_data": row.pdf_data,
+            "ocr_text": row.ocr_text,
+            "fields_json": json.loads(row.fields_json)
+        })
+
+    return result
+
+
+# Grouped Docs
+
+def save_grouped_pdf_to_db(conn, session_id, document_id, form_type, pdf_path):
+    with open(pdf_path, "rb") as f:
+        data = f.read()
+    query = "INSERT INTO TF_ingestion_mGroupsPDF (session_id, document_id, form_type, file_data, created_at) VALUES (?, ?, ?, ?, GETDATE())"
+    cursor = conn.cursor()
+    cursor.execute(query, (session_id, document_id, form_type, data))
+    conn.commit()
+
+def save_grouped_text_to_db(conn, session_id, document_id, form_type, text_path):
+    with open(text_path, "r", encoding="utf-8") as f:
+        text = f.read()
+    query = "INSERT INTO TF_ingestion_mGroupsOCR (session_id, document_id, form_type, ocr_text, created_at) VALUES (?, ?, ?, ?, GETDATE())"
+    cursor = conn.cursor()
+    cursor.execute(query, (session_id, document_id, form_type, text))
+    conn.commit()
+
+def save_grouped_fields_to_db(conn, session_id, document_id, form_type, fields):
+    json_data = json.dumps(fields, ensure_ascii=False)
+    query = "INSERT INTO TF_ingestion_mGroupsFields (session_id, document_id, form_type, fields_json, created_at) VALUES (?, ?, ?, ?, GETDATE())"
+    cursor = conn.cursor()
+    cursor.execute(query, (session_id, document_id, form_type, json_data))
+    conn.commit()
+
+
+
+

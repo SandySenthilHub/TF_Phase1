@@ -1,9 +1,12 @@
 import sys
 import os
+import io
 import re
 import json
 import pyodbc
+import argparse
 from PyPDF2 import PdfReader, PdfWriter
+from collections import defaultdict
 from pdf2image import convert_from_path
 from pytesseract import image_to_string
 from PIL import Image
@@ -13,11 +16,15 @@ from pathlib import Path
 from dotenv import load_dotenv
 from extract_fields import extract_fields
 from db_utils import (
-    save_raw_document_to_db,
-    save_cleaned_documents_to_db,
+    # save_raw_document_to_db,
+    save_cleaned_text_to_db,
+    save_cleaned_pdf_to_db,
     save_extracted_fields_to_db,
-    get_sql_server_connection
+    get_sql_server_connection,
+    save_grouped_pdf_to_db, save_grouped_text_to_db, save_grouped_fields_to_db, get_cleaned_split_data
 )
+
+
 
 # Azure OCR & OpenAI
 from azure.ai.documentintelligence import DocumentIntelligenceClient
@@ -41,6 +48,7 @@ client_openai = AzureOpenAI(
 azure_page_text_cache = []
 
 
+
 def sanitize_form_name(name: str) -> str:
     name = name.upper().strip()
     name = re.sub(r"[^A-Z0-9 ]", "", name)
@@ -57,23 +65,42 @@ def classify_form_type(text: str, fallback_name: str) -> str:
                 return cleaned
     return sanitize_form_name(fallback_name)
 
+import cv2
+import numpy as np
 
-def extract_text_tesseract(pdf_path, page_number):
-    images = convert_from_path(pdf_path, first_page=page_number + 1, last_page=page_number + 1)
-    if images:
-        raw_text = image_to_string(images[0])
-        cleaned = re.sub(r'[ \t]+', ' ', raw_text)
-        cleaned = re.sub(r'\n{3,}', '\n\n', cleaned).strip()
-        lines = cleaned.split('\n')
-        merged = []
-        for i, line in enumerate(lines):
-            if i < len(lines) - 1 and not line.endswith(('.', ':')) and len(line) < 80:
-                merged.append(line + ' ' + lines[i + 1].strip())
-                lines[i + 1] = ''
-            elif line:
-                merged.append(line)
-        return '\n'.join([l for l in merged if l.strip()])
-    return ""
+def ocr_image_with_best_rotation(pil_image: Image.Image) -> str:
+    """
+    Try OCR at 0, 90, 180, and 270 degrees and return the one with most text content.
+    """
+    max_text = ""
+    max_len = 0
+
+    for angle in [0, 90, 180, 270]:
+        rotated = pil_image.rotate(angle, expand=True)
+        cv_img = cv2.cvtColor(np.array(rotated), cv2.COLOR_RGB2BGR)
+        gray = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
+        text = image_to_string(gray)
+        text = text.strip()
+        if len(text) > max_len:
+            max_text = text
+            max_len = len(text)
+
+    return max_text
+
+
+def extract_text_tesseract(image: Image.Image) -> str:
+    raw_text = ocr_image_with_best_rotation(image)
+    cleaned = re.sub(r'[ \t]+', ' ', raw_text)
+    cleaned = re.sub(r'\n{3,}', '\n\n', cleaned).strip()
+    lines = cleaned.split('\n')
+    merged = []
+    for i, line in enumerate(lines):
+        if i < len(lines) - 1 and not line.endswith(('.', ':')) and len(line) < 80:
+            merged.append(line + ' ' + lines[i + 1].strip())
+            lines[i + 1] = ''
+        elif line:
+            merged.append(line)
+    return '\n'.join([l for l in merged if l.strip()])
 
 
 def extract_text_azure_document(pdf_path):
@@ -112,89 +139,109 @@ def refine_text_with_azure_openai(raw_text: str) -> str:
     return response.choices[0].message.content.strip()
 
 
-def extract_text_from_image_page(pdf_path, page_number, method="tesseract"):
-    if method == "azure":
-        texts = extract_text_azure_document(pdf_path)
-        return texts[page_number] if page_number < len(texts) else ""
-    else:
-        return extract_text_tesseract(pdf_path, page_number)
+from pdf2image import convert_from_path
+from pytesseract import image_to_string
+from PIL import Image
+
+def extract_text_from_image_with_rotation(image: Image.Image) -> str:
+    max_text = ""
+    max_len = 0
+    for angle in [0, 90, 180, 270]:
+        rotated = image.rotate(angle, expand=True)
+        gray = rotated.convert("L")  # Grayscale improves OCR accuracy
+        text = image_to_string(gray).strip()
+        if len(text) > max_len:
+            max_text = text
+            max_len = len(text)
+    return max_text
 
 
 def split_pdf_by_form_type(pdf_path: str, session_id: str, document_id: str, conn, output_base: str = "./outputs", ocr_method: str = "tesseract"):
-    reader = PdfReader(pdf_path)
+    from PyPDF2 import PdfReader, PdfWriter
+
     original_filename = os.path.basename(pdf_path)
     base_name = os.path.splitext(original_filename)[0]
-
     output_dir = os.path.join(output_base, session_id, f"{base_name}-{document_id}")
     os.makedirs(output_dir, exist_ok=True)
 
     # Save original PDF
     original_copy_path = os.path.join(output_dir, "original.pdf")
     with open(original_copy_path, "wb") as f_out:
+        reader = PdfReader(pdf_path)
         writer = PdfWriter()
         for page in reader.pages:
             writer.add_page(page)
         writer.write(f_out)
 
-    # Save original PDF to DB
-    save_raw_document_to_db(conn, session_id, document_id, original_filename, original_copy_path)
+    # Save original to DB
+    # save_raw_document_to_db(conn, session_id, document_id, original_filename, original_copy_path)
 
-    print(f" Extracting and splitting each page using [{ocr_method}]...")
+    print(f" Converting all PDF pages to images...")
+    images = convert_from_path(pdf_path)
 
-    for i, page in enumerate(reader.pages):
-        writer = PdfWriter()
-        writer.add_page(page)
-
+    for i, image in enumerate(images):
         page_number = i + 1
         padded_page = f"{page_number:02}"
+        print(f"\n Processing Page {page_number}...")
 
         pdf_path_out = os.path.join(output_dir, f"Page_{padded_page}.pdf")
         txt_path_out = os.path.join(output_dir, f"Page_{padded_page}.txt")
         json_path_out = os.path.join(output_dir, f"Page_{padded_page}.fields.json")
 
-        # Save individual page PDF
-        with open(pdf_path_out, "wb") as f_out:
-            writer.write(f_out)
+        os.makedirs(os.path.dirname(pdf_path_out), exist_ok=True)
 
-        # Extract text
-        text = extract_text_from_image_page(pdf_path, i, method=ocr_method)
+        #  Export single-page PDF FIRST
+        reader = PdfReader(pdf_path)
+        writer = PdfWriter()
+        writer.add_page(reader.pages[i])
+        with open(pdf_path_out, "wb") as f_pdf:
+            writer.write(f_pdf)
+
+        #  Now it’s safe to extract + save
+        text = extract_text_from_image_with_rotation(image)
+
+        if not text or len(text.strip()) < 20:
+            print(f" Tesseract OCR failed or returned low confidence on page {page_number}")
+            try:
+                print(" Trying Azure OCR fallback...")
+                texts = extract_text_azure_document(pdf_path)
+                text = texts[i] if i < len(texts) else ""
+            except Exception as azure_error:
+                print(f" Azure fallback also failed: {azure_error}")
+                text = "[NO TEXT FOUND]"
 
         with open(txt_path_out, "w", encoding="utf-8") as f_txt:
-            f_txt.write(text.strip())
+            f_txt.write(text)
 
-        # Extract fields
-        fields = extract_fields(text.strip())
+        if text.strip() == "[NO TEXT FOUND]" or len(text.strip()) < 10:
+            fields = {}
+            print(" Skipping field extraction due to empty/invalid text.")
+        else:
+            fields = extract_fields(text.strip())
+
         with open(json_path_out, "w", encoding="utf-8") as f_json:
             json.dump(fields, f_json, indent=2, ensure_ascii=False)
 
-        # Save to DB
-        save_cleaned_documents_to_db(conn, session_id, document_id, f"Page_{padded_page}", pdf_path_out, txt_path_out)
-        save_extracted_fields_to_db(conn, session_id, document_id, f"Page_{padded_page}", fields)
+            save_cleaned_pdf_to_db(conn, session_id, document_id, f"Page_{padded_page}", pdf_path_out)
+            save_cleaned_text_to_db(conn, session_id, document_id, f"Page_{padded_page}", txt_path_out)
+            save_extracted_fields_to_db(conn, session_id, document_id, f"Page_{padded_page}", fields)
 
-        print(f"    Saved Page {page_number}")
-        print(f"    PDF: {pdf_path_out}")
-        print(f"    Text: {txt_path_out}")
-        print(f"    Fields JSON: {json_path_out}")
+        print(f" Page {page_number} processed and saved.")
 
-    print(f"\n  Done splitting and saving all {len(reader.pages)} pages for session: {session_id} using OCR: {ocr_method}.")
-
-    return output_dir
+    print(f"\n Done splitting and saving all {len(images)} pages for session: {session_id}")
 
 
-# Entry Point
+
+
+
 if __name__ == "__main__":
-    if len(sys.argv) < 4:
-        print("Usage: python split_by_form.py <pdf_path> <session_id> <document_id> [ocr_method]")
-        sys.exit(1)
+    import argparse
+    parser = argparse.ArgumentParser(description="Split documents by pages with OCR")
+    parser.add_argument("pdf_path")
+    parser.add_argument("session_id")
+    parser.add_argument("document_id")
+    parser.add_argument("ocr_method")
+    args = parser.parse_args()
+    conn = get_sql_server_connection()
+    split_pdf_by_form_type(args.pdf_path, args.session_id, args.document_id, conn, ocr_method=args.ocr_method)
 
-    pdf_path = sys.argv[1]
-    session_id = sys.argv[2]
-    document_id = sys.argv[3]
-    ocr_method = sys.argv[4] if len(sys.argv) > 4 else "tesseract"
-
-    try:
-        conn = get_sql_server_connection()
-        split_pdf_by_form_type(pdf_path, session_id, document_id, conn, ocr_method=ocr_method)
-    except Exception as e:
-        print(" Split operation failed:", e)
-        sys.exit(1)
