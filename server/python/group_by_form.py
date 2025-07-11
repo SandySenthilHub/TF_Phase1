@@ -11,11 +11,15 @@ from db_utils import (
 
 from openai import AzureOpenAI
 from pydantic import BaseModel, Field
+from dotenv import load_dotenv
+
 
 # Azure OpenAI credentials
-AZURE_API_KEY = "3etbcid9Lmrf1MZ0hLxDyu4ZClFJw5rWVHq6WXWYHWAEzE6MPwLMJQQJ99BFACYeBjFXJ3w3AAABACOGKNeb"
-AZURE_ENDPOINT = "https://shahul.openai.azure.com/"
-DEPLOYMENT_NAME = "gpt-4o"
+load_dotenv()
+
+AZURE_API_KEY = os.getenv("AZURE_API_KEY")
+AZURE_ENDPOINT = os.getenv("AZURE_ENDPOINT")
+DEPLOYMENT_NAME = os.getenv("DEPLOYMENT_NAME")
 
 class ToolParameters(BaseModel):
     extracted_text: str = Field(description="Text from document")
