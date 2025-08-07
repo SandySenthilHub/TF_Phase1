@@ -1069,56 +1069,55 @@ const SessionDetail: React.FC = () => {
 
 
 
-          {activeTab === 'catalog' && (
-            <div className="space-y-6">
-              <h2 className="text-xl font-semibold text-slate-900">Cataloged Documents</h2>
+         
 
-              {catalogLoading ? (
-                <p>Loading cataloged documents...</p>
-              ) : catalogedResults.length > 0 ? (
-                <div className="overflow-x-auto rounded-lg shadow border border-slate-200 bg-white">
-                  <table className="min-w-full table-auto text-sm text-slate-800">
-                    <thead className="bg-slate-100 text-slate-700 text-left">
-                      <tr>
-                        <th className="px-4 py-2 border">#</th>
-                        <th className="px-4 py-2 border">Form Type</th>
-                        <th className="px-4 py-2 border">Matched Name</th>
-                        <th className="px-4 py-2 border">Confidence</th>
-                        <th className="px-4 py-2 border">Cataloged At</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {catalogedResults.map((doc, index) => (
-                        <tr key={doc.id} className="hover:bg-slate-50">
-                          <td className="px-4 py-2 border">{index + 1}</td>
-                          <td className="px-4 py-2 border">{doc.grouped_form_type}</td>
-                          <td className="px-4 py-2 border">
-                            {doc.matched_document_name || (
-                              <span className="text-slate-400 italic">Not matched</span>
-                            )}
-                          </td>
-                          <td className="px-4 py-2 border">
-                            {typeof doc.confidence_score === 'number'
-                              ? doc.confidence_score.toFixed(2)
-                              : '—'}
-                          </td>
-                          <td className="px-4 py-2 border">
-                            {new Date(doc.cataloged_at).toLocaleString()}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-slate-500 text-sm">
-                  {activeSplitDocId
-                    ? 'No cataloged results available for this document.'
-                    : 'Select a document in "Splitted" tab to view cataloged results.'}
-                </div>
-              )}
-            </div>
-          )}
+          {activeTab === 'catalog' && (
+  <div className="space-y-6">
+    <h2 className="text-xl font-semibold text-slate-900">Cataloged Documents</h2>
+
+    {catalogLoading ? (
+      <p>Loading cataloged documents...</p>
+    ) : catalogedResults.length > 0 ? (
+      <div className="overflow-x-auto">
+        <table className="min-w-full bg-white border border-slate-200 text-sm">
+          <thead className="bg-slate-100">
+            <tr>
+              <th className="py-2 px-4 border-b text-left">Grouped Form</th>
+              <th className="py-2 px-4 border-b text-left">Matched Document</th>
+              <th className="py-2 px-4 border-b text-left">Confidence</th>
+              <th className="py-2 px-4 border-b text-left">Timestamp</th>
+            </tr>
+          </thead>
+          <tbody>
+            {catalogedResults
+              .filter(entry => entry.document_id === activeSplitDocId)
+              .map((entry, idx) => (
+                <tr key={idx} className="hover:bg-slate-50">
+                  <td className="py-2 px-4 border-b">{entry.grouped_form_type || '-'}</td>
+                  <td className="py-2 px-4 border-b">{entry.matched_document_name || '-'}</td>
+                  <td className="py-2 px-4 border-b">
+                    {entry.confidence_score === 0
+                      ? '0'
+                      : (parseFloat(entry.confidence_score).toFixed(2))}
+                  </td>
+                  <td className="py-2 px-4 border-b">
+                    {new Date(entry.cataloged_at).toLocaleString()}
+                  </td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </div>
+    ) : (
+      <div className="text-slate-500 text-sm">
+        {activeSplitDocId
+          ? 'No cataloged results available for this document.'
+          : 'Select a document in "Splitted" tab to view cataloged results.'}
+      </div>
+    )}
+  </div>
+)}
+
 
 
 

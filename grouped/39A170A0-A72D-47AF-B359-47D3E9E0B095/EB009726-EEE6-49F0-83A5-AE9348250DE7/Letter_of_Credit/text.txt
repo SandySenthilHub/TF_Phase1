@@ -1,0 +1,68 @@
+```
+29/04/21-17:26:47                          TFDPrinter-0891-000001                              1
+
+-------------------- Instance Type and Transmission --------------------
+Notification (Transmission) of Original sent to SWIFT (ACK)
+Network Delivery Status  : Network Ack
+Priority/Delivery        : Normal
+Message Input Reference  : 1726 210429ABDIAEADAXXX0153944873
+---------------------------- Message Header ----------------------------
+Swift Input              : FIN 700 Issue of a Documentary Credit
+Sender                   : ABDIAEADXXX
+                           ABU DHABI ISLAMIC BANK
+                           ABU DHABI AE
+Receiver                 : SMBCJPJTXXX
+                           SUMITOMO MITSUI BANKING CORPORATION
+                           TOKYO JP
+MUR                      : 1619699496468609
+---------------------------- Message Text ------------------------------
+27: Sequence of Total
+                           1/1
+40A: Form of Documentary Credit
+                           IRREVOCABLE
+20: Documentary Credit Number
+                           ILCAB02021000098
+31C: Date of Issue
+                           210429
+40E: Applicable Rules
+                           UCP LATEST VERSION
+31D: Date and Place of Expiry
+                           210817BENEFICIARY COUNTRY
+50: Applicant
+                           GREEN OASIS CO LLC
+                           PO BOX 1297, INVEST BANK BLDG
+                           2ND FLOOR, KHALIFA ST, AL AIN, UAE
+                           TEL 037511332 FAX 037511533
+59: Beneficiary - Name & Address
+                           MITSUI AMD CO LTD
+                           2-1 OTEMACHI 1-CHOME, CHIYODA-KU
+                           TOKYO JAPAN
+32B: Currency Code, Amount
+                           Currency     : USD (US DOLLAR)
+                           Amount       : #60,465.00#
+41D: Available With...By... - Name&Addr
+                           ANY BANK IN JAPAN
+                           BY NEGOTIATION
+42C: Drafts at...
+                           180 DAYS AFTER BILL OF LADING DATE
+42A: Drawee - FI BIC
+                           ABDIAEADXXX
+                           ABU DHABI ISLAMIC BANK
+                           ABU DHABI AE
+43P: Partial Shipments
+                           NOT ALLOWED
+43T: Transshipment
+                           ALLOWED
+44E: Port of Loading/Airport of Dep.
+                           ANY SEAPORT IN JAPAN
+44F: Port of Discharge/Airport of Dest
+                           ANY SEAPORT IN ABU DHABI, UAE
+44C: Latest Date of Shipment
+                           210726
+45A: Description of Goods and/or Services
+                           KANEMITE SC-1500 L (PACKING -500ML) PESTICIDES.
+                           ALL OTHER DETAILS RELATED TO GOODS ARE AS PER BENEFICIARY'S
+                           PROFORMA INVOICE NOS.B7WE-20-5130-X DATED 29-03-2021
+
+                           INVOICE MUST CERTIFY THE SAME.
+```

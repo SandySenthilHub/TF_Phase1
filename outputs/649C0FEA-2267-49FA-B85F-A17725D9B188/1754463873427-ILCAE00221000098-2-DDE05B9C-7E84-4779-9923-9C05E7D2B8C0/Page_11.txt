@@ -1,0 +1,96 @@
+```plaintext
+MITSUI & CO., LTD.  
+HEAD OFFICE  
+2-1 OTEMACHI 1-CHOME,  
+CHIYODA-KU, TOKYO,  
+JAPAN  
+J.P. O. BOX NO. 822  
+TELEPHONE: TOKYO, 100-8611, JAPAN  
+03-3285-1111  
+
+CERTIFICATE OF WEIGHT  
+ORIGINAL  
+
+Invoice No.  
+B7WE-20-5130-X  
+
+Sales Section Commodity Code Date of Issue  
+JB7W E241022 2021/6/7  
+
+Bill to Contract No. and Date Marks & Nos  
+B7WE-20-5130-X 2020/12/23  
+GREEN OASIS CO. LLC  
+PO BOX 1297, INVEST BANK BLDG  
+2ND FLOOR, KHALIFA ST.  
+AL AIN (ABU DHABI), UAE  
+TEL. 037511332 FAX 037511533  
+
+Payment  
+KANEMITE SC  
+GREEN OASIS CO. LLC  
+P.O. BOX1297, ALAIN, UAE.  
+TEL. 037511332  
+FAX 037511533  
+ABU DHABI  
+NO. 1-3  
+BATCH NO. K21020UA  
+MANUFACTURING DATE MAR. 2021  
+EXPIRY DATE FEB. 2024  
+MADE IN JAPAN  
+AGRO-KANESHO CO., LTD  
+
+Issuing Bank  
+ABU DHABI ISLAMIC BANK  
+ABU DHABI  
+U.A.E.  
+
+L/C No.  
+ILCAE00221000098  
+
+L/C File No.  
+BE0027  
+
+Shipped To  
+ABU DHABI SEAPORT, U.A.E  
+
+Voyage No. On or About  
+SPECTRUM N 2021/7/1  
+
+From Via To  
+YOKOHAMA, JAPAN ABU DHABI SEAPORT, U.A.E  
+
+________________________________________________________________________________
+
+Description Net Weight Gross Weight Meas't  
+KGS. KGS. M3  
+
+KANEMITE SC-1500 L  
+(PACKING -500ML) PESTICIDES.  
+ALL OTHER DETAILS RELATED TO GOODS ARE AS PER BENEFICIARY'S  
+PROFORMA INVOICE NOS. B7WE-20-5130-X DATED 29-03-2021  
+
+PACKING : 500 ML BOTTLE/CARTON/PALLET  
+
+KANEMITE SC  
+PALLETS CARTONS BOTTLES LITERS  
+3 150 3,000 1,500.000  
+
+TOTAL : 3 150 3,000 1,500.000 1,500 1,920 5.663  
+
+==================================================================================================  
+
+L/C NUMBER: ILCAE00221000098  
+TRADE NAME: KANEMITE SC  
+COMMON NAME: ACEQUINOXYL  
+
+BATCH NO.: K21020UA  
+CAS NUMBER: 57960-19-7  
+
+MANUFACTURING DATE: MAR. 2021  
+EXPIRY DATE: FEB. 2024  
+
+LOCAL REGISTRATION NUMBER (AUD-AD-140-2020)  
+
+--------------------------------------------------------------------------------------------------  
+MITSUI & CO., LTD.  
+```

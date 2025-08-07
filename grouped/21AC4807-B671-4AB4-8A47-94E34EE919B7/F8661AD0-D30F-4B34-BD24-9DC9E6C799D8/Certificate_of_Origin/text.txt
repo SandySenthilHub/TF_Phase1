@@ -1,0 +1,142 @@
+```plaintext
+Invoice No.         B7WE-20-5130-X                                                               Page: 2  
+Description                                                                                     Unit Price          Amount
+
+COMMON NAME: ACEQUINOXYL  
+
+BATCH NO. : K21020UA  
+CAS NUMBER : 57960-19-7  
+
+MANUFACTURING DATE: MAR. 2021  
+EXPIRY DATE       : FEB. 2024  
+
+LOCAL REGISTRATION NUMBER (AUD-AD-140-2020)  
+
+WE CERTIFY THAT ORIGIN OF GOODS AS 'JAPAN'  
+AND CONTENTS ARE TRUE AND CORRECT.  
+
+GOODS ARE OF JAPAN ORIGIN.  
+
+THE NAME AND ADDRESS OF THE MANUFACTURER(S)/  
+THE NAME AND ADDRESS OF THE MANUFACTURER(S):  
+MANUFACTURER’S NAME : AGRO-KANESHO CO., LTD.  
+ADDRESS             : AKASAKA SHASTA-EAST 7TH FL., 4-2-19,  
+                      AKASAKA, MINATO-KU, TOKYO, JAPAN  
+
+UAE VAT NO. : 1000 3040 2000 003 (GREEN OASIS)  
+JPN CORPORATE NUMBER: 10100 0100 8767 (MITSUI & CO. LTD.)  
+
+TOTAL AMOUNT: USD 60,465.00  
+
+THE GOODS SHIPPED ARE NOT OF ISRAELI ORIGIN NOR DO THEY  
+CONTAIN ANY ISRAELI MATERIALS. THEY ARE NOT DESIGNATED TO  
+VISIT ANY ISRAELI PORTS NOR ARE THEY EXPORTED FROM ISRAEL.  
+THEY ARE OF JAPANESE ORIGIN.  
+
+                                                                                        - E. & O. E. -
+
+----------------------------------------------------------------------------------
+                                         الإمارات العربية المتحدة  
+                                               UNITED ARAB EMIRATES  
+                                         Ministry of Foreign Affairs  
+                                 المراسم القنصلية - التصديقات  
+                                 Consular Department - Legalization  
+
+Date: 14/07/2021 07:24                       تاريخ:  
+Ref : 241601012757                          الرقم:  
+Doc : JPY 57960-19-7                        مستند:  
+Total Value: 60,465                         القيمة الكلية:
+                                            تم التصديق:  
+
+باركود:  
+[ Barcode present ]  
+---------------------------------------------------------------------------------
+
+                                                                                   MITSUI & CO., LTD.
+```
+
+```plaintext
+CERTIFICATE OF ORIGIN
+issued by 
+The Tokyo Chamber of Commerce & Industry 
+Tokyo, Japan
+
+Print ORIGINAL or COPY
+ORIGINAL
+
+3. No. and date of Invoice
+B7WE-20-5130-X 
+2021/06/07
+
+4. Country of Origin
+JAPAN
+
+1. Exporter (Name, address, country)
+MITSUI & CO., LTD.
+2-1, OTEMACHI 1-CHOME, CHIYODA-KU, 
+TOKYO, JAPAN
+
+2. Consignee (Name, address, country)
+GREEN OASIS CO LLC
+PO BOX 1297, INVEST BANK BLDG
+2ND FLOOR, KHALIFA ST
+AL AIN(ABU DHABI), UAE
+TEL 037511332 FAX 037511533
+
+5. Transport details
+FROM : YOKOHAMA, JAPAN  
+TO : ABU DHABI SEAPORT, U.A.E  
+BY : SPECTRUM N  
+ON OR ABOUT : 2021/07/01  
+
+6. Remarks
+L/C NUMBER: ILCAE00221000098
+
+7. Marks, numbers, number and kind of packages; description of goods
+KANEMITE SC  
+KANEMITE SC-1500L  
+GREEN OASIS CO. LLC,  
+(PACKING -500ML) PESTICIDES.  
+PO.BOX1297, ALAIN, UAE,  
+(CHEMICAL)  
+TEL 037511332  
+FAX 037511533  
+3 PALLETS  
+ABU DHABI  
+1,500.000 LITERS  
+NO. 1-3  
+BATCH NO.K21020UA  
+TRADE NAME: KANEMITE SC  
+MANUFACTURING DATE MAR. COMMON NAME: ACEQUINOCYL  
+2021  
+GOODS ARE OF JAPAN ORIGIN.  
+EXPIRY DATE FEB. 2024  
+
+MADE IN JAPAN  
+AGRO-KANESHO CO., LTD  
+
+THE NAME AND ADDRESS OF THE MANUFACTURER(S):  
+MANUFACTURER’S NAME: AGRO-KANESHO CO., LTD.  
+ADDRESS :AKASAKA SHASITA-EAST 7TH FL. 4-2-19,  
+AKASAKA, MINATO-KU, TOKYO, JAPAN  
+
+THE GOODS SHIPPED ARE NOT OF ISRAELI ORIGIN NOR DO THEY  
+CONTAIN ANY ISRAELI MATERIALS. THEY ARE NOT DESIGNATED TO  
+VISIT ANY ISRAEL PORTS NOR ARE THEY EXPORTED FROM ISRAEL.  
+THEY ARE OF JAPANESE ORIGIN.
+
+9. Declaration by the Exporter
+The undersigned, as an authorized signatory, hereby declares that the above-mentioned goods were produced or manufactured in the country shown in box 4.  
+
+Place and Date: Tokyo  
+(Signature)  
+
+(Name)  
+Atsushi Kika  
+
+10. Certification
+The undersigned hereby certifies, on the basis of relative invoice and other supporting documents, that the above-mentioned goods originate in the country shown in box 4 to the best of its knowledge and belief.  
+
+The Tokyo Chamber of Commerce & Industry  
+(Seal, Date, Signature and Stamp of Certifying Authority)
+```

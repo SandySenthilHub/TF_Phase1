@@ -1,0 +1,54 @@
+Below is the extracted text from the provided image, maintaining the exact format, layout, and content:
+
+---
+
+**ORIGINAL**
+
+1. Goods consigned from (Exporter’s business name, address, country)  
+   **NAYUR INDUSTRIES**  
+   F205, SECTOR 5, DSIDC INDUSTRIAL AREA BAWANA, DELHI  
+   INDIA  
+
+2. Goods consigned to (Consignee’s name, address, country):  
+   **AL SAMAH AC UNITS IND LLC**  
+   P.O. BOX 3669, NEW IND AREA, PLOT NO. 0837, BLOCK NO.1,  
+   UMMUL ZANOON AREA, UMM AL QUWAIN, UAE. Tel: 06-7672473 Fax:  
+   06-5427627 --- Bank Name and Address ABU DHABI ISLAMIC BANK P.O.  
+   BOX 313, ABU DHABI, UAE ---- LC NO. IRLAOE612000021 DT  
+   01-FEB-2022  
+   UAE  
+
+Reference No: **OC/2022/016/0142508A/00144051**  
+
+**CERTIFICATE OF ORIGIN**  
+**(NON PREFERENTIAL)**  
+(Combined declaration and certificate)  
+
+Issued in India  
+**DELHI CHAMBER OF COMMERCE**  
+49, Rani Jhansi Road, Opp.  
+Jhandewalan Mata Mandir, New  
+Delhi-110055, INDIA.  
+Telephone: 011-23616421  
+E-mail: info@delhilchamber.com  
+
+---
+
+3. Means of transport and route (as far as known)  
+   **By Sea**  
+   **DELHI - MUNDRA - JEBEL ALI (UAE)**  
+
+4. For Office use  
+
+---
+
+| **Item number** | **Marks and numbers of packages** | **7. Number and kind of Packages, description of goods** | **8. Origin criteria** | **9. Gross weight or other quantity** | **10. Number and date of invoices** |  
+|------------------|----------------------------------|----------------------------------------------------------|------------------------|---------------------------------------|------------------------------------|  
+| 1               | 01 TO 55                         | CONCEALED CLIP, DAMPER BLACK CLIP, 73269099               | "INDIAN ORIGIN"       | 497.000 pcs                           | 148/21-22, DT. 23/02/2022          |  
+| 2               | 01 TO 55                         | DIFFUSER LONG PIN, DIFFUSER SHORT PIN, 76161000           | "INDIAN ORIGIN"       | 640.000 pcs                           |                                    |  
+| 3               | 01 TO 55                         | DIFFUSER SPRING, 73201019                                 | "INDIAN ORIGIN"       | 3,500.000 pcs                         |                                    |  
+| 4               | 01 TO 55                         | RIGHT ANGLE CLIP (GRILL CLIP), STAINLESS STEEL  
+BUSH, ID-12MM, OD-16MM, 73269099  
+| "INDIAN ORIGIN" | 1,02,290 pcs | |  
+5 | 01 TO 55 | ALU CAMLOCK - NEW, 76161000 | "INDIAN ORIGIN" | 84,000 pcs | |  
+6 | 01 TO 55 | T CLIP - NEW, DAMPER SCREW NEW, 73269099 | "INDIAN ORIGIN" | 168,000 pcs | ....

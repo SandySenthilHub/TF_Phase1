@@ -1,0 +1,192 @@
+# OCR/ICR Extracted Text Starts Below:
+
+---
+
+### BILL OF LADING
+
+#### FIRST ORIGINAL  
+
+**SHIPPER/EXPORTER (COMPLETE NAME AND ADDRESS):**  
+MITSUI AND CO. LTD.,  
+2-1, OTEMACHI 1-CHOME  
+CHIYODA-KU TOKYO, JAPAN  
+AS CONSIGNOR B7WE-20-5130-X  
+
+---
+
+**BOOKING NO:**  
+2122490880  
+
+**BILL OF LADING NO:**  
+OOLJ2122490880  
+
+**EXPORT REFERENCES:**  
+小貿易  
+小貿悪番号  
+小貿从  
+小貿レ  
+
+---
+
+**CONSIGNEE (COMPLETE NAME AND ADDRESS):**  
+TO THE ORDER OF  
+ABU DHABI ISLAMIC BANK, U.A.E.  
+
+---
+
+**FORWARDING AGENT - REFERENCES:**  
+**FMC NO:**  
+
+**POINT AND COUNTRY OF ORIGIN OF GOODS:**  
+
+---
+
+**NOTIFY PARTY (COMPLETE NAME AND ADDRESS):**  
+GREEN OASIS CO. LLC,  
+P.O. BOX 1297, AL AIN, UAE  
+TEL: 037511332 FAX: 037511533  
+
+**ALSO NOTIFY PARTY - ROUTING & INSTRUCTIONS:**  
+++ U.A.E  
+
+---
+
+#### **PLACE OF RECEIPT:**  
+YOKOHAMA, JAPAN  
+
+---
+
+**VESSEL/VOYAGE FLAG:**  
+SPECTRUM N 015S  
+
+**PORT OF LOADING:**  
+YOKOHAMA, JAPAN  
+
+---
+
+**PORT OF DISCHARGE:**  
+ABU DHABI SEAPORT, ++  
+
+**PLACE OF DELIVERY:**  
+
+---
+
+**TYPE OF MOVEMENT (IF MIXED, USE DESCRIPTION OF PACKAGES AND GOODS FIELD):**  
+FCL / FCL  
+CY/CY  
+
+---
+
+#### **PARTICULARS DECLARED BY SHIPPER BUT NOT ACKNOWLEDGED BY THE CARRIER**  
+
+| CNTNR NOS./SEAL NOS. | QUANTITY OR GROSS WEIGHT | DESCRIPTION OF GOODS | MEASUREMENT |
+|-----------------------|--------------------------|-----------------------|-------------|
+| OOLU8746006 / OOLU943603 | 3 PALLETS | FCL/FCL / 20RF | 1920 KGS / 5.663 CBM |
+
+KANEMITE SC-1500  
+GREEN OASIS CO. PALLETS (PACKING: 500 ML) PESTICIDES.  
+P.O. BOX127,  
+ALAIN, UAE  
+TEL 037511332  
+FAX 037511533  
+ABU DHABI  
+NO. 1-3  
+BATCH NO. K2102QUA  
+MANUFACTURING DATE MAR. 2021  
+EXPIRY DATE FEB. 2024  
+MADE IN JAPAN  
+
+---
+
+**HS CODE:**  
+3808.91-00  
+
+---
+
+#### **TO BE CONTINUED ON ATTACHED LIST**  
+
+---
+
+**NOTICE 1:**  
+Freight charges are payable as per the terms of the Service Agreement/Contract & tariffs in effect and per mutually agreed shipping customer contract tariff provisions, subject only to Law or Merchant Marine Act of the U.S. Damage of Goods by Sea Act of 2015/644. When the Merchant prepaid any tariff/rest rate, obligations under freight law remain due and underwritten by the carrier.
+
+**NOTICE 2:**  
+Carrier does not assume the responsibility for errors & omissions enclosed hereof agreed notice.
+
+**NOTICE 3:**  
+
+Declared Cargo Value US$ ________.  
+If Merchant enters a value, Carrier’s limitation of liability shall not apply and the ad valorem rate will be charged.  
+
+---
+
+#### **FREIGHT & CHARGES PAYABLE AT:**  
+
+| CODE | TARIFF ITEM | FREIGHTED AS | RATE | PREPAID | COLLECT |  
+|------|-------------|--------------|------|---------|---------|  
+
+---
+
+**DATE TAKEN ON BOARD:**  
+**1 JUL 2021**  
+**DATE:**  
+**1 JUL 2021**  
+
+---
+
+**SIGNED BY:**  
+Orient Overseas Container Line as Carrier  
+
+---
+
+Now Interpret Signature & Seal! Sections etc safely
+
+Below is the extracted text from the provided image. All formatting and content have been preserved as closely as possible:
+
+---
+
+VESSEL: SPECTRUM II  
+VOYAGE: 1152  
+PAGE: 2 OF 2  
+B/L NO.: OOLU122240860  
+
+-------------------------------------------------------------------------------------  
+CHTR: JOB & VES/MLS NO.          QUANTITY IN UNIT PACKAGES/PIECES  
+NAME OF SHIPPERS                DESCRIPTION OF GOODS           GROSS WEIGHT               MEASUREMENT  
+-------------------------------------------------------------------------------------  
+
+AGRO KANEESHO CO., LTD  
+
+-------------------------------------------------------------------------------------
+
+OCEAN FREIGHT PREPAID  
+TOTAL NO. OF CONTAINERS/PACKAGES RECEIVED & ACKNOWLEDGED BY CARRIER FOR THE PURPOSE OF   
+CALCULATION OF PACKAGE LIMITATION (IF APPLICABLE): 1 CONTAINER(S)/PACKAGE(S)  
+DESTINATION CHARGES COLLECT PER LINE TARIFF, AND TO BE COLLECTED FROM THE PARTY WHO  
+LAWFULLY DEMANDS DELIVERY OF THE CARGO.  
+SHIPPER LOAD AND COUNT, CONTAINER(S) SEALED BY SHIPPER  
+THE NAME, ADDRESS AND  
+TELEPHONE NUMBER OF THE CARRYING  
+VESSEL AGENT AT THE PORT OF  
+DESTINATION:  
+OOCL (UAE) LLC (ABU DHABI)  
+33RD FLOOR, SKY TOWER,  
+REEM ISLAND,  
+ABU DHABI, UNITED ARAB EMIRATES  
+971 2 6712611  
+
+"SAID TO CONTAIN" "FREIGHT AS ARRANGED"  
+"REFRIGERATED CARGO"  
+"REEFER SET TEMPERATURE 15 DEGREE CELSIUS"  
+
+==============================================================  
+
+LADEN ON BOARD: SPECTRUM II D155  
+PORT OF LOADING: YOKOHAMA, JAPAN  
+DATE: 1 JUL 2021                SIGNATURE:  
+--------------------------------------  
+
+SIGNED BY Orient Overseas Container  
+Lines as Carriers  
+
+---

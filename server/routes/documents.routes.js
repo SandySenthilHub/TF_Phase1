@@ -216,6 +216,7 @@ router.delete('/:id', async (req, res) => {
       { table: "TF_ingestion_mGroupsPDF", col: "document_id" },
       { table: "TF_ingestion_mGroupsOCR", col: "document_id" },
       { table: "TF_ingestion_mGroupsFields", col: "document_id" },
+      { table: "TF_mdocs_mgroups", col: "document_id" }
     ];
 
     for (const { table, col } of deleteTables) {
