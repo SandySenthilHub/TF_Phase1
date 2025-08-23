@@ -127,7 +127,6 @@ def refine_text_with_azure_openai_image(image: Image.Image) -> str:
         print(f"Azure OpenAI image OCR failed: {e}")
         return None
 
-
 def extract_text_multi_ocr(image: Image.Image, pdf_path: str, page_index: int) -> Dict[str, str]:
     tesseract_text = extract_text_from_image_with_rotation(image)
     azure_doc_text = ""

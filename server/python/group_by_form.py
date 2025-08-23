@@ -10,6 +10,7 @@ from db_utils import (
 )
 from openai import AzureOpenAI
 from dotenv import load_dotenv
+from rapidfuzz import fuzz, process  # For fuzzy matching
 
 # Load credentials
 load_dotenv()
@@ -17,27 +18,36 @@ AZURE_API_KEY = os.getenv("AZURE_OPENAI_KEY")
 AZURE_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
 DEPLOYMENT_NAME = os.getenv("AZURE_DEPLOYMENT_NAME")
 
-# Rule-based keyword matches
-COMMON_FORM_PATTERNS = {
-    "commercial_invoice": ["invoice", "commercial invoice"],
-    "certificate_of_origin": ["certificate of origin"],
-    "bill_of_lading": ["bill of lading"],
-    "packing_list": ["packing list"],
-    "insurance_certificate": ["insurance certificate"],
-    "lc_terms": ["letter of credit", "lc terms", "credit terms"],
-    "proforma_invoice": ["proforma invoice"],
-    "remittance_advice": ["remittance advice"],
-    "shipping_guarantee": ["shipping guarantee"],
-    "warehouse_receipt": ["warehouse receipt"],
-    "swift_message": ["swift", "mt700", "sender"]
-}
 
-def keyword_based_classification(text: str) -> str:
+# ---------------------- DB Lookup Helpers ----------------------
+
+def load_document_names_from_db(conn):
+    """Fetch all distinct DocumentName values from the Attributes_TF_Document table."""
+    query = "SELECT DISTINCT DocumentName FROM Attributes_TF_Document"
+    cursor = conn.cursor()
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    document_names = [row[0].strip() for row in rows if row[0]]
+    return document_names
+
+
+def db_based_classification(text: str, document_names: list, threshold: int = 70) -> str:
+    """
+    Fuzzy match the extracted text against DocumentName values from DB.
+    Returns the best match if score >= threshold, else None.
+    """
     text_lower = text.lower()
-    for form_type, keywords in COMMON_FORM_PATTERNS.items():
-        if any(k in text_lower for k in keywords):
-            return form_type
+    best_match, score, _ = process.extractOne(
+        text_lower,
+        document_names,
+        scorer=fuzz.partial_ratio
+    )
+    if score >= threshold:
+        return best_match
     return None
+
+
+# ---------------------- Utility Functions ----------------------
 
 def sanitize_form_name(name: str) -> str:
     name = name.lower().strip()
@@ -45,17 +55,19 @@ def sanitize_form_name(name: str) -> str:
     name = re.sub(r"\s+", "_", name)
     return name[:40] or "unknown"
 
-def classify_form_type(text: str) -> str:
+
+def classify_form_type(text: str, document_names: list) -> str:
+    """Classify the form type using DB first, then OpenAI if no DB match."""
     if not text.strip():
         return "empty_text"
 
-    # 1st attempt: keyword rules
-    keyword_form = keyword_based_classification(text)
-    if keyword_form:
-        print(f"[Classifier] Keyword match: {keyword_form}")
-        return keyword_form
+    # 1st attempt: DB-based matching
+    db_match = db_based_classification(text, document_names)
+    if db_match:
+        print(f"[Classifier] DB match: {db_match}")
+        return db_match
 
-    # 2nd attempt: fallback to OpenAI
+    # 2nd attempt: fallback to Azure OpenAI
     try:
         prompt = f"""
 You are a trade finance document classifier.
@@ -63,8 +75,8 @@ You are a trade finance document classifier.
 Below is extracted text. Identify its document type.
 
 Your output must be:
-- A clear document type like: "Commercial Invoice", "Packing List", etc.
-- Do not say "Unknown" — guess based on the content.
+- A clear document type (e.g., "Commercial Invoice", "Packing List").
+- Guess based on the content if unsure.
 
 ---
 {text}
@@ -89,13 +101,19 @@ Return ONLY the document type name.
         )
 
         form_name = response.choices[0].message.content.strip()
-        return sanitize_form_name(form_name)
+        print(f"[Classifier] OpenAI match: {form_name}")
+        return form_name
 
     except Exception as e:
         print(f"[OpenAI ERROR] {e}")
         return "openai_failure"
 
+
+# ---------------------- Main Grouping Logic ----------------------
+
 def group_documents(session_id, document_id, conn):
+    document_names = load_document_names_from_db(conn)  # Load DB names once
+
     base_path = os.path.join("outputs", session_id)
     subfolders = [f for f in os.listdir(base_path) if document_id in f]
     if not subfolders:
@@ -109,7 +127,6 @@ def group_documents(session_id, document_id, conn):
     for file in sorted(os.listdir(input_folder)):
         if not file.endswith(".txt"):
             continue
-
         if file in assigned_pages:
             continue
 
@@ -120,10 +137,10 @@ def group_documents(session_id, document_id, conn):
         with open(txt_path, "r", encoding="utf-8") as f:
             text = f.read()
 
-        form_type = classify_form_type(text)
+        form_type = classify_form_type(text, document_names)
         form_type_clean = sanitize_form_name(form_type)
 
-        # Skip OpenAI failures
+        # Handle failed classifications
         if form_type_clean in ["", "unknown", "openai_failure", "empty_text"]:
             form_type_clean = "unclassified"
 
@@ -177,7 +194,10 @@ def group_documents(session_id, document_id, conn):
         if all_fields:
             save_grouped_fields_to_db(conn, session_id, document_id, form_type, all_fields)
 
-    print("\n Document grouping complete.")
+    print("\nDocument grouping complete.")
+
+
+# ---------------------- Entry Point ----------------------
 
 if __name__ == "__main__":
     import sys

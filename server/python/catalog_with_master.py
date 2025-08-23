@@ -11,8 +11,12 @@ def get_master_documents(conn):
     rows = cursor.fetchall()
     return [dict(zip(columns, row)) for row in rows]
 
+def folder_name_to_readable(name: str) -> str:
+    """Convert folder names like 'bill_of_lading' to 'Bill of Lading'."""
+    return name.replace("_", " ").strip().title()
+
 def read_grouped_text(folder_path):
-    # Look for the first .txt file inside the folder (usually Page_01.txt)
+    # Look for the first .txt file inside the folder (usually text.txt)
     for file in os.listdir(folder_path):
         if file.endswith(".txt"):
             with open(os.path.join(folder_path, file), "r", encoding="utf-8") as f:
@@ -21,7 +25,9 @@ def read_grouped_text(folder_path):
 
 def catalog_grouped_text(conn, session_id, document_id, folder_name, text_content):
     master_docs = get_master_documents(conn)
-    text_lower = text_content.lower()
+
+    # Clean folder name for better matching
+    folder_name_clean = folder_name.replace("_", " ").lower()
 
     best_match_name = None
     best_match_id = None
@@ -29,7 +35,7 @@ def catalog_grouped_text(conn, session_id, document_id, folder_name, text_conten
 
     for doc in master_docs:
         master_name = doc.get("DocumentName", "").lower()
-        score = difflib.SequenceMatcher(None, text_lower, master_name).ratio()
+        score = difflib.SequenceMatcher(None, folder_name_clean, master_name).ratio()
 
         if score > best_score:
             best_score = score
@@ -40,12 +46,17 @@ def catalog_grouped_text(conn, session_id, document_id, folder_name, text_conten
         best_match_name = None
         best_match_id = None
 
-    # Convert to UUIDs
-    session_uuid = uuid.UUID(str(session_id))
-    document_uuid = uuid.UUID(str(document_id))
-    matched_uuid = uuid.UUID(str(best_match_id)) if best_match_id else None
+    # UUID-safe conversion helper
+    def safe_uuid(value):
+        try:
+            return uuid.UUID(str(value))
+        except (ValueError, TypeError, AttributeError):
+            return None
 
-    # Insert into DB
+    session_uuid = safe_uuid(session_id)
+    document_uuid = safe_uuid(document_id)
+    matched_uuid = safe_uuid(best_match_id)
+
     query = """
         INSERT INTO TF_mdocs_mgroups (
             session_id, document_id, grouped_form_type,
@@ -67,12 +78,18 @@ def catalog_grouped_text(conn, session_id, document_id, folder_name, text_conten
 
     print(f"[ Cataloged] '{folder_name}' -> '{best_match_name}' (score: {round(best_score, 2)})")
 
+
+
+
+
+
+
 def catalog_all_grouped_documents(session_id, document_id):
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     grouped_path = os.path.join(base_dir, "grouped", str(session_id), str(document_id))
 
     if not os.path.exists(grouped_path):
-        print(f" Grouped folder not found: {grouped_path}")
+        print(f"Grouped folder not found: {grouped_path}")
         return
 
     folders = [
@@ -80,17 +97,12 @@ def catalog_all_grouped_documents(session_id, document_id):
         if os.path.isdir(os.path.join(grouped_path, f))
     ]
 
-    print(f" Found {len(folders)} grouped folders")
+    print(f"[Catalog Success]:  Found {len(folders)} grouped folders")
 
     conn = get_sql_server_connection()
     for folder in folders:
-        folder_path = os.path.join(grouped_path, folder)
-        content = read_grouped_text(folder_path)
-
-        if content:
-            catalog_grouped_text(conn, session_id, document_id, folder, content)
-        else:
-            print(f" No text found in {folder_path}")
+        content = read_grouped_text(os.path.join(grouped_path, folder))
+        catalog_grouped_text(conn, session_id, document_id, folder, content)
     conn.close()
 
 if __name__ == "__main__":
@@ -102,7 +114,7 @@ if __name__ == "__main__":
             session_id = uuid.UUID(sys.argv[1])
             document_id = uuid.UUID(sys.argv[2])
         except ValueError:
-            print(" Invalid UUIDs")
+            print("Invalid UUIDs")
             sys.exit(1)
 
         catalog_all_grouped_documents(session_id, document_id)

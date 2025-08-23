@@ -1,0 +1,120 @@
+Track and Trace
+
+SI.No AWB
+
+Number
+
+Item Status Date
+
+Number
+
+Update By
+
+22519903 2043904306 Athub 31-Jul-2021
+41:36:32
+
+Mohamed .-
+Ali / 4899
+
+Pickup Details:
+
+Pickup BR-Al Bateen (ADIB). Department
+
+Location
+
+Contact
+Person
+
+SUMITOMO MITSUI BANKING
+CORP
+
+Address
+
+Contact
+Number
+
+Email
+
+Emirates Courier
+
+Delivery Details
+
+Internal Mail BR-Al Bateen (ADIB). Department
+
+Contact TFD Address
+
+Person
+
+Contact
+Number
+
+Email
+
+Other
+Reference
+
+Contact
+Number 2
+
+Emirates ABU DHABI Country
+
+City Delivered To
+
+Delivery Date Receiver ID
+
+{tem Details
+
+Is return Item No Is urgent
+
+Pickup
+
+Special
+Instructions
+
+Weight (gm)
+
+Height (cm) Length (cm)
+
+Width (cm) 0 Item Count
+
+No Document
+
+type
+
+RTS (Return
+to Sender)
+
+Dispatch Key
+
+Audit Trail
+
+Created By Mohamed Ali
+
+Created Date
+
+Remarks
+
+The item picked up from BR-Al Bateen
+(ADIB). by John Cabalog / 101
+
+Mail Section
+
+DHL JAPAN
+
+John Cabalog / 101
+
+Trade Finance Ops
+
+Baynunah street,al bateen, near Inter
+continental hotel
+
+02
+ILCAE00221000098 GEEN OASIS
+
+CO LLC USD 60594.40
+
+UNITED ARAB EMIRATES
+
+Document
+
+31-Jul-2021 11:36:32
