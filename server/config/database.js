@@ -7,11 +7,11 @@ const config = {
   server: process.env.DB_SERVER,
   database: process.env.DB_DATABASE,
   user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
+  password:'Apple123!@#',
   port: parseInt(process.env.DB_PORT) || 1433,
   options: {
-    encrypt: process.env.DB_ENCRYPT === 'true',
-    trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE === 'true',
+    encrypt: false,                 // Boolean, must be true/false
+    trustServerCertificate: true,   // Boolean
     enableArithAbort: true,
     connectionTimeout: 30000,
     requestTimeout: 30000,

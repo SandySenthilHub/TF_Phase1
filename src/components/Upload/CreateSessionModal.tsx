@@ -4,7 +4,7 @@ import { X } from 'lucide-react';
 interface CreateSessionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreateSession: (data: { cifNumber: string; lcNumber: string; lifecycle: string }) => void;
+  onCreateSession: (data: { cifNumber: string; lcNumber: string; lifecycle: string; cusName: string; cusCategory: string }) => void;
 }
 
 const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
@@ -15,19 +15,21 @@ const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
   const [formData, setFormData] = useState({
     cifNumber: '',
     lcNumber: '',
-    lifecycle: ''
+    lifecycle: '',
+    cusName: '',
+    cusCategory: ''
   });
 
   const handleSubmit = () => {
-    if (!formData.cifNumber || !formData.lcNumber || !formData.lifecycle) {
+    if (!formData.cifNumber || !formData.lcNumber || !formData.lifecycle || !formData.cusName || !formData.cusCategory) {
       return;
     }
     onCreateSession(formData);
-    setFormData({ cifNumber: '', lcNumber: '', lifecycle: '' });
+    setFormData({ cifNumber: '', lcNumber: '', lifecycle: '', cusName: '', cusCategory: '' });
   };
 
   const handleClose = () => {
-    setFormData({ cifNumber: '', lcNumber: '', lifecycle: '' });
+    setFormData({ cifNumber: '', lcNumber: '', lifecycle: '', cusName: '', cusCategory: '' });
     onClose();
   };
 
@@ -62,7 +64,7 @@ const CreateSessionModal: React.FC<CreateSessionModalProps> = ({
           
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
-              LC Number *
+              LC Number *   
             </label>
             <input
               type="text"

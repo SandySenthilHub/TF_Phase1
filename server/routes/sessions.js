@@ -20,16 +20,19 @@ router.get('/', authenticateToken, async (req, res) => {
 // Create new session
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { cifNumber, lcNumber, lifecycle } = req.body;
-    
-    if (!cifNumber || !lcNumber || !lifecycle) {
-      return res.status(400).json({ error: 'CIF number, LC number, and lifecycle are required' });
+    const { cifNumber, lcNumber, lifecycle, cusName, cusCategory, instrument } = req.body;
+
+    if (!cifNumber || !lcNumber || !lifecycle || !cusName || !cusCategory || !instrument) {
+      return res.status(400).json({ error: 'CIF number, LC number, lifecycle, customer name, customer category, and instrument are required' });
     }
 
     const sessionData = {
       cifNumber,
       lcNumber,
       lifecycle,
+      cusName,
+      cusCategory,
+      instrument,
       userId: req.user.userId
     };
 
@@ -45,7 +48,7 @@ router.post('/', authenticateToken, async (req, res) => {
 router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const session = await SessionModel.getSessionById(req.params.id);
-    
+
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
     }
@@ -57,7 +60,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 
     // Get documents for this session
     const documents = await DocumentModel.getDocumentsBySession(session.id);
-    
+
     res.json({
       ...session,
       documents
@@ -72,13 +75,13 @@ router.get('/:id', authenticateToken, async (req, res) => {
 router.patch('/:id/status', authenticateToken, async (req, res) => {
   try {
     const { status } = req.body;
-    
+
     if (!status) {
       return res.status(400).json({ error: 'Status is required' });
     }
 
     const session = await SessionModel.getSessionById(req.params.id);
-    
+
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
     }
@@ -100,7 +103,7 @@ router.patch('/:id/status', authenticateToken, async (req, res) => {
 router.patch('/:id/iterate', authenticateToken, async (req, res) => {
   try {
     const session = await SessionModel.getSessionById(req.params.id);
-    
+
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
     }
@@ -122,9 +125,9 @@ router.patch('/:id/iterate', authenticateToken, async (req, res) => {
 router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     const sessionId = req.params.id;
-    
+
     const session = await SessionModel.getSessionById(sessionId);
-    
+
     if (!session) {
       return res.status(404).json({ error: 'Session not found' });
     }
@@ -141,9 +144,9 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
     // Delete the session
     const result = await SessionModel.deleteSession(sessionId);
-    
+
     console.log(`Session deleted by user ${req.user.userId}: ${sessionId}`);
-    
+
     res.json({
       message: 'Session deleted successfully',
       deletedSession: result.deletedSession,

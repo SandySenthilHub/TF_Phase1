@@ -29,14 +29,14 @@ api.interceptors.response.use(
       console.error('Network error:', error.message);
       error.message = 'Network error. Please check if the server is running.';
     }
-    
+
     // Handle auth errors
     if (error.response?.status === 401) {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('user');
       window.location.href = '/';
     }
-    
+
     return Promise.reject(error);
   }
 );
@@ -52,7 +52,7 @@ export const authAPI = {
       throw error;
     }
   },
-  
+
   register: async (userData: { email: string; name: string; password: string; role?: string }) => {
     try {
       const response = await api.post('/auth/register', userData);
@@ -62,7 +62,7 @@ export const authAPI = {
       throw error;
     }
   },
-  
+
   verify: async () => {
     try {
       const response = await api.get('/auth/verify');
@@ -85,8 +85,8 @@ export const sessionsAPI = {
       throw error;
     }
   },
-  
-  create: async (sessionData: { cifNumber: string; lcNumber: string; lifecycle: string }) => {
+
+  create: async (sessionData: { cifNumber: string; cusName: string; cusCategory: string; lcNumber: string; instrument: string; lifecycle: string }) => {
     try {
       const response = await api.post('/sessions', sessionData);
       return response.data;
@@ -95,7 +95,7 @@ export const sessionsAPI = {
       throw error;
     }
   },
-  
+
   getById: async (sessionId: string) => {
     try {
       const response = await api.get(`/sessions/${sessionId}`);
@@ -105,7 +105,7 @@ export const sessionsAPI = {
       throw error;
     }
   },
-  
+
   updateStatus: async (sessionId: string, status: string) => {
     try {
       const response = await api.patch(`/sessions/${sessionId}/status`, { status });
@@ -115,7 +115,7 @@ export const sessionsAPI = {
       throw error;
     }
   },
-  
+
   incrementIteration: async (sessionId: string) => {
     try {
       const response = await api.patch(`/sessions/${sessionId}/iterate`);
@@ -139,34 +139,37 @@ export const sessionsAPI = {
 
 // Documents API
 export const documentsAPI = {
-  upload: async (sessionId: string, file: File) => {
+  // services/api.ts (documentsAPI)
+  upload: async (sessionId: string, file: File, docName: string) => {
     try {
       const formData = new FormData();
-      formData.append('document', file);
-      
+      formData.append('document', file);        // 👈 multer expects 'document'
+      formData.append('documentName', docName); // 👈 backend reads req.body.documentName
+
       const response = await api.post(`/documents/upload/${sessionId}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        timeout: 60000, // 60 seconds for file uploads
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 60000,
       });
+
       return response.data;
     } catch (error: any) {
       console.error('Upload document API error:', error);
       throw error;
     }
   },
-  
+
+
   getBySession: async (sessionId: string) => {
     try {
       const response = await api.get(`/documents/session/${sessionId}`);
+      // console.log(response.data);
       return response.data;
     } catch (error: any) {
       console.error('Get documents by session API error:', error);
       throw error;
     }
   },
-  
+
   process: async (documentId: string) => {
     try {
       const response = await api.post(`/documents/${documentId}/process`);
@@ -231,7 +234,7 @@ export const documentsAPI = {
     try {
       const formData = new FormData();
       formData.append('document', newFile);
-      
+
       const response = await api.put(`/documents/${documentId}/replace`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',

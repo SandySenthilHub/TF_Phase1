@@ -23,6 +23,7 @@ export interface Document {
   Id: string;
   sessionId: string;
   FileName: string;
+  DocumentName: string;
   FileType: string;
   FileSize: number;
   FilePath?: string;

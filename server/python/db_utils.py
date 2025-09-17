@@ -30,17 +30,23 @@ def get_sql_server_connection():
         raise
 
 
-def save_cleaned_text_to_db(conn, session_id, document_id, form_type, text_path):
-    with open(text_path, 'r', encoding='utf-8') as f_text:
-        text_data = f_text.read()
-
+def save_cleaned_text_to_db(conn, session_id, document_id, form_type, text_data):
+    """
+    Save raw OCR text directly to database.
+    """
     query = """
     INSERT INTO TF_ingestion_CleanedOCR (session_id, document_id, form_type, ocr_text, created_at)
     VALUES (?, ?, ?, ?, GETDATE())
     """
     cursor = conn.cursor()
-    cursor.execute(query, (session_id, document_id, form_type, text_data))
-    conn.commit()
+    try:
+        cursor.execute(query, (session_id, document_id, form_type, text_data))
+        conn.commit()
+        print(" OCR text saved to DB successfully.")
+    except Exception as e:
+        print(f" Failed to save OCR text to DB: {e}")
+    finally:
+        cursor.close()
 
 def save_cleaned_pdf_to_db(conn, session_id, document_id, form_type, pdf_path):
     with open(pdf_path, 'rb') as f_pdf:

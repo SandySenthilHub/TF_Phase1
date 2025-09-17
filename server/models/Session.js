@@ -10,7 +10,10 @@ export class SessionModel {
       
       const result = await request
         .input('cifNumber', sql.VarChar(50), sessionData.cifNumber)
+        .input('cusName', sql.VarChar(100), sessionData.cusName)
+        .input('cusCategory', sql.VarChar(50), sessionData.cusCategory)
         .input('lcNumber', sql.VarChar(50), sessionData.lcNumber)
+        .input('instrument', sql.VarChar(100), sessionData.instrument)
         .input('lifecycle', sql.VarChar(100), sessionData.lifecycle)
         .input('userId', sql.VarChar(50), sessionData.userId)
         .input('status', sql.VarChar(20), 'created')
@@ -18,9 +21,9 @@ export class SessionModel {
         .input('updatedAt', sql.DateTime, new Date())
         .query(`
           INSERT INTO SB_TF_ingestion_Box 
-          (cifNumber, lcNumber, lifecycle, userId, status, createdAt, updatedAt, iterations)
+          (cifNumber, cusName, cusCategory, lcNumber, instrument, lifecycle, userId, status, createdAt, updatedAt, iterations)
           OUTPUT INSERTED.*
-          VALUES (@cifNumber, @lcNumber, @lifecycle, @userId, @status, @createdAt, @updatedAt, 0)
+          VALUES (@cifNumber, @cusName, @cusCategory, @lcNumber, @instrument, @lifecycle, @userId, @status, @createdAt, @updatedAt, 0)
         `);
       
       return result.recordset[0];
@@ -47,7 +50,7 @@ export class SessionModel {
         request.input('userId', sql.VarChar(50), userId);
       }
       
-      query += ' GROUP BY s.id, s.cifNumber, s.lcNumber, s.lifecycle, s.status, s.createdAt, s.updatedAt, s.userId, s.iterations ORDER BY s.createdAt DESC';
+      query += ' GROUP BY s.id, s.cifNumber, s.cusName, s.cusCategory, s.lcNumber, s.instrument, s.lifecycle, s.status, s.createdAt, s.updatedAt, s.userId, s.iterations ORDER BY s.createdAt DESC';
       
       const result = await request.query(query);
       return result.recordset;
@@ -70,7 +73,7 @@ export class SessionModel {
           FROM SB_TF_ingestion_Box s
           LEFT JOIN ingestion_document_raw d ON s.id = d.sessionId
           WHERE s.id = @sessionId
-          GROUP BY s.id, s.cifNumber, s.lcNumber, s.lifecycle, s.status, s.createdAt, s.updatedAt, s.userId, s.iterations
+          GROUP BY s.id, s.cifNumber, s.cusName, s.cusCategory, s.lcNumber, s.instrument, s.lifecycle, s.status, s.createdAt, s.updatedAt, s.userId, s.iterations
         `);
       
       return result.recordset[0];

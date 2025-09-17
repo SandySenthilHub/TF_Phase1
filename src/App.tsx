@@ -6,10 +6,12 @@ import Layout from './components/Layout/Layout';
 import Dashboard from './pages/Dashboard';
 import Sessions from './pages/Sessions';
 import SessionDetail from './pages/SessionDetail';
+import LifeCyclePage from "./pages/LifeCycle"; 
 
 import Upload from './pages/Upload';
 import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
+import SubControlCenter from './pages/SCC';
 
 
 function App() {
@@ -32,6 +34,8 @@ function App() {
           <Route path="sessions/:sessionId" element={<SessionDetail />} />
 
           <Route path="upload" element={<Upload />} />
+          <Route path="scc" element={<SubControlCenter />} />
+          <Route path="life-cycle" element={<LifeCyclePage />} />
           <Route path="reports" element={<div className="p-6">Reports Page - Coming Soon</div>} />
           <Route path="admin/*" element={<div className="p-6">Admin Panel - Coming Soon</div>} />
         </Route>

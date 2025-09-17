@@ -3,12 +3,15 @@ import { NavLink } from 'react-router-dom';
 import { 
   Home, 
   FileText, 
-  Upload, 
+  Upload,
+  CircleDashed,
   Settings, 
   Users, 
   CheckCircle,
   BarChart3,
-  LogOut
+  LogOut,
+  LayoutGrid,
+  GitBranch
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
@@ -17,8 +20,10 @@ const Sidebar: React.FC = () => {
 
   const navigationItems = [
     { to: '/', icon: Home, label: 'Dashboard' },
-    { to: '/sessions', icon: FileText, label: 'Sessions' },
-    { to: '/upload', icon: Upload, label: 'Upload Documents' },
+    { to: '/upload', icon: Upload, label: 'Sessions' },
+    { to: '/sessions', icon: FileText, label: 'OCR Factory' },
+    { to: '/scc', icon: GitBranch, label: 'Sub Control center' },
+    // { to: '/life-cycle', icon: CircleDashed, label: 'Life Cycle' },
     { to: '/reports', icon: BarChart3, label: 'Reports' },
   ];
 

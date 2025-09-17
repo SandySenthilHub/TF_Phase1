@@ -42,13 +42,27 @@ const Sessions: React.FC = () => {
     navigate(`/sessions/${session.id}`);
   };
 
-  const handleDeleteSession = async (sessionId: string) => {
+  const handleDeleteSession = async (documentId: string) => {
     try {
-      await deleteSession(sessionId);
-      setShowDeleteConfirm(null);
-    } catch (error) {
-      console.error('Error deleting session:', error);
+      const documentId = localStorage.getItem('documentId');
+      const response = await fetch(`http://localhost:3000/api/documents/${documentId}`, {
+        method: 'DELETE',
+      });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      console.log(data.message);
+      // Optionally refresh your document list after deletion
+      // fetchDocuments();
+    } else {
+      console.error("Delete failed:", data.error);
+      alert(`Delete failed: ${data.error}`);
     }
+  } catch (err) {
+    console.error("Error deleting document:", err);
+    alert("An error occurred while deleting the document.");
+  }
   };
 
   const canDeleteSession = (session: Session) => {

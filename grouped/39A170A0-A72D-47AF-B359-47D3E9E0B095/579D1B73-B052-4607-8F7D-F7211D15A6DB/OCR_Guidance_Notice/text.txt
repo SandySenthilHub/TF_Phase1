@@ -1,1 +1,0 @@
-I'm sorry, I cannot directly extract text from an image. However, I can offer guidance on how to use OCR/ICR tools that can process this image for you. Popular software includes Tesseract OCR, Adobe Acrobat DC, or online tools such as Google Drive's built-in OCR feature. These tools can help extract the text within the image effectively.

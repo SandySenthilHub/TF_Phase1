@@ -7,12 +7,12 @@ interface SessionState {
   currentSession: Session | null;
   isLoading: boolean;
   error: string | null;
-  createSession: (data: { cifNumber: string; lcNumber: string; lifecycle: string }) => Promise<Session>;
+  createSession: (data: { cifNumber: string; cusName: string; cusCategory: string; lcNumber: string; lifecycle: string }) => Promise<Session>;
   loadSessions: () => Promise<void>;
   setCurrentSession: (session: Session | null) => void;
   updateSessionStatus: (sessionId: string, status: Session['status']) => Promise<void>;
   addDocumentToSession: (sessionId: string, document: Document) => void;
-  uploadDocument: (sessionId: string, file: File) => Promise<any>;
+  uploadDocument: (sessionId: string, file: File, docName: string) => Promise<any>;
   incrementIteration: (sessionId: string) => Promise<void>;
   deleteSession: (sessionId: string) => Promise<void>;
   clearError: () => void;
@@ -26,22 +26,22 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   createSession: async (data) => {
     set({ isLoading: true, error: null });
-    
+
     try {
       const newSession = await sessionsAPI.create(data);
-      
+
       // Add documents array if not present
       const sessionWithDocs = {
         ...newSession,
         documents: newSession.documents || []
       };
-      
+
       set(state => ({
         sessions: [sessionWithDocs, ...state.sessions],
         currentSession: sessionWithDocs,
         isLoading: false,
       }));
-      
+
       return sessionWithDocs;
     } catch (error: any) {
       const errorMessage = error.response?.data?.error || error.message || 'Failed to create session';
@@ -52,16 +52,16 @@ export const useSessionStore = create<SessionState>((set, get) => ({
 
   loadSessions: async () => {
     set({ isLoading: true, error: null });
-    
+
     try {
       const sessions = await sessionsAPI.getAll();
-      
+
       // Ensure all sessions have documents array
       const sessionsWithDocs = sessions.map((session: any) => ({
         ...session,
         documents: session.documents || []
       }));
-      
+
       set({ sessions: sessionsWithDocs, isLoading: false });
     } catch (error: any) {
       const errorMessage = error.response?.data?.error || error.message || 'Failed to load sessions';
@@ -77,7 +77,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   updateSessionStatus: async (sessionId, status) => {
     try {
       const updatedSession = await sessionsAPI.updateStatus(sessionId, status);
-      
+
       set(state => ({
         sessions: state.sessions.map(session =>
           session.id === sessionId ? { ...updatedSession, documents: session.documents } : session
@@ -106,31 +106,33 @@ export const useSessionStore = create<SessionState>((set, get) => ({
     }));
   },
 
-  uploadDocument: async (sessionId, file) => {
-    try {
-      const response = await documentsAPI.upload(sessionId, file);
-      
-      // Add document to session
-      get().addDocumentToSession(sessionId, response.document);
-      
-      // Update session status to uploading if it's still created
-      const session = get().sessions.find(s => s.id === sessionId);
-      if (session && session.status === 'created') {
-        await get().updateSessionStatus(sessionId, 'uploading');
-      }
-      
-      return response;
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.error || error.message || 'Failed to upload document';
-      set({ error: errorMessage });
-      throw new Error(errorMessage);
+uploadDocument: async (sessionId: string, file: File, docName: string) => {
+  try {
+    const response = await documentsAPI.upload(sessionId, file, docName);
+
+    get().addDocumentToSession(sessionId, response.document);
+
+    const session = get().sessions.find(s => s.id === sessionId);
+    if (session && session.status === 'created') {
+      await get().updateSessionStatus(sessionId, 'uploading');
     }
-  },
+
+    return response;
+  } catch (error: any) {
+    const errorMessage =
+      error.response?.data?.error || error.message || 'Failed to upload document';
+    set({ error: errorMessage });
+    throw new Error(errorMessage);
+  }
+},
+
+
+
 
   incrementIteration: async (sessionId) => {
     try {
       const updatedSession = await sessionsAPI.incrementIteration(sessionId);
-      
+
       set(state => ({
         sessions: state.sessions.map(session =>
           session.id === sessionId ? { ...updatedSession, documents: session.documents } : session
@@ -149,7 +151,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   deleteSession: async (sessionId) => {
     try {
       await sessionsAPI.delete(sessionId);
-      
+
       set(state => ({
         sessions: state.sessions.filter(session => session.id !== sessionId),
         currentSession: state.currentSession?.id === sessionId ? null : state.currentSession,

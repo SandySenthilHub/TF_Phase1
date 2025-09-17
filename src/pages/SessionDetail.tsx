@@ -30,11 +30,23 @@ import DocumentComparator from '../components/Documents/DocumentComparator';
 const SessionDetail: React.FC = () => {
 
   const { sessionId: paramSessionId, documentId: paramDocumentId } = useParams<{ sessionId: string; documentId: string }>();
+  const [toasts, setToasts] = useState<string[]>([]);
+
+  const showToast = (message: string) => {
+    const id = Date.now().toString();
+    setToasts((prev) => [...prev, message]);
+
+    // Auto-remove after 4 seconds
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((m) => m !== message));
+    }, 4000);
+  };
 
   const [documentId, setDocumentId] = useState(localStorage.getItem("documentId") || "");
   const [sessionId, setSessionId] = useState(paramSessionId || localStorage.getItem("sessionId") || "");
   const navigate = useNavigate();
   const { currentSession, setCurrentSession, updateSessionStatus } = useSessionStore();
+
   const {
     documents,
     loadDocuments,
@@ -46,7 +58,7 @@ const SessionDetail: React.FC = () => {
     isLoading
   } = useDocumentStore();
 
-  const [activeTab, setActiveTab] = useState<'documents' | 'splitted' | 'grouped' | 'catalog' | 'final'>('documents');
+  const [activeTab, setActiveTab] = useState<'documents' | 'extracted' | 'splitted' | 'grouped' | 'catalog' | 'final'>('documents');
   const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [sessionFrozen, setSessionFrozen] = useState(false);
@@ -60,6 +72,13 @@ const SessionDetail: React.FC = () => {
   const [fieldData, setFieldData] = useState<Record<string, string> | null>(null);
   const [fieldLoading, setFieldLoading] = useState(false);
   const [groupedDocs, setGroupedDocs] = useState([]);
+
+  const [extractedDocs, setExtractedDocs] = useState([]);
+  const [activeExtractedDocId, setActiveExtractedDocId] = useState(null);
+  const [activeExtractedDoc, setActiveExtractedDoc] = useState<Document | null>(null);
+  const [extractedText, setExtractedText] = useState("");
+
+
 
   const [groupedResults, setGroupedResults] = useState<any[]>([]);
   const [groupedLoading, setGroupedLoading] = useState(false);
@@ -93,6 +112,7 @@ const SessionDetail: React.FC = () => {
       setIsProcessing(false);
     }
   };
+
 
   const handleValidateDocument = async (documentId: string, isValid: boolean) => {
     try {
@@ -242,6 +262,9 @@ const SessionDetail: React.FC = () => {
   };
 
 
+
+  // Existing lifecycle
+
   const runSplitDocument = async (documentId: string) => {
     try {
       setSplittingDocId(documentId);
@@ -269,9 +292,62 @@ const SessionDetail: React.FC = () => {
 
       const splitData = await splitRes.json();
       console.log("📦 Split response:", splitData);
+      showToast("✅ Process completed successfully.");
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
 
       if (splitRes.ok) {
-        alert(`✅ Split Success: ${splitData.message}`);
+        setActiveSplitDocId(documentId);
+        setSplitResults(splitData.files || []);
+        localStorage.setItem("documentId", documentId);
+
+        // 🕒 Delay to ensure split results are saved
+        setTimeout(() => {
+          fetchSplitResultsForDoc(docData.sessionId);
+        }, 1500);
+      }
+
+    } catch (err) {
+      alert("❌ Error splitting document: " + err.message);
+    } finally {
+      setSplittingDocId(null);
+    }
+  };
+
+  // New lifecycle
+  const runSplitDocumentNew = async (documentId: string) => {
+    try {
+      setSplittingDocId(documentId);
+
+      const docRes = await fetch(`http://localhost:3000/api/documents/${documentId}/pdf-info-new`);
+      const docData = await docRes.json();
+
+      if (!docRes.ok || !docData?.filePath || !docData?.sessionId) {
+        alert("❌ Failed to fetch document path or session ID");
+        return;
+      }
+
+      // 🔹 Step 1: Split the document
+      const splitRes = await fetch(`http://localhost:3000/api/documents/newsplit/${docData.sessionId}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          filePath: docData.filePath,
+          documentId: documentId,
+          ocrMethod: ocrMethod,
+        }),
+      });
+
+      const splitData = await splitRes.json();
+      console.log("📦 Split response:", splitData);
+
+
+      if (splitRes.ok) {
+        // showToast("✅ Process completed successfully.");
         setActiveSplitDocId(documentId);
         setSplitResults(splitData.files || []);
         localStorage.setItem("documentId", documentId);
@@ -291,7 +367,7 @@ const SessionDetail: React.FC = () => {
         console.log("🧩 Grouping response:", groupData);
 
         if (groupRes.ok) {
-          alert("✅ Grouping completed successfully.");
+          // alert("✅ Grouping completed successfully.");
 
           // 🔹 Step 3: Cataloging
           const catalogRes = await fetch(`http://localhost:3000/api/documents/catalog`, {
@@ -309,7 +385,10 @@ const SessionDetail: React.FC = () => {
           console.log("📚 Cataloging response:", catalogData);
 
           if (catalogRes.ok) {
-            alert("📚 Cataloging completed.");
+            showToast("✅ Process completed successfully.");
+            setTimeout(() => {
+              window.location.reload();
+            }, 1000);
           } else {
             alert("⚠️ Cataloging failed: " + catalogData?.error);
           }
@@ -319,14 +398,13 @@ const SessionDetail: React.FC = () => {
       } else {
         alert(`❌ Split Failed: ${splitData.error}`);
       }
+
     } catch (err) {
       alert("❌ Error splitting document: " + err.message);
     } finally {
       setSplittingDocId(null);
     }
   };
-
-
 
 
 
@@ -340,34 +418,32 @@ const SessionDetail: React.FC = () => {
     return fetch(`http://localhost:3000/api/documents/grouped-files/${sessionId}/${documentId}`)
       .then(res => res.json())
       .then(async (data) => {
-        const formNames = data.forms || [];
-        console.log("📄 Found grouped forms:", formNames);
+        const localFormNames = data.forms || []; // local folder names
 
+        // Fetch SQL form names
+        const sqlRes = await fetch(`http://localhost:3000/api/documents/grouped-files-name/${sessionId}/${documentId}`);
+        const sqlData = await sqlRes.json();
+        const sqlFormNames = sqlData.forms || [];
+
+        // Map local folder names to SQL names by index
         const docs = await Promise.all(
-          formNames.map((formName) => {
-            const pdfUrl = `${basePath}/${formName}/document.pdf`;
-            const textUrl = `${basePath}/${formName}/text.txt`;
-            // const fieldsUrl = `${basePath}/${formName}/fields.json`; // Uncomment if needed
+          localFormNames.map((localFormName: string, index: number) => {
+            const pdfUrl = `${basePath}/${localFormName}/document.pdf`;
+            const textUrl = `${basePath}/${localFormName}/text.txt`;
 
-            return Promise.all([
-              fetch(pdfUrl),
-              fetch(textUrl),
-              // fetch(fieldsUrl),
-            ])
+            return Promise.all([fetch(pdfUrl), fetch(textUrl)])
               .then(async ([pdfRes, textRes]) => {
                 const pdfOk = pdfRes.ok;
                 const text = textRes.ok ? await textRes.text() : "";
-                // const fields = fieldsRes.ok ? await fieldsRes.json() : {};
 
                 return {
-                  formName,
+                  formName: sqlFormNames[index]?.formName || localFormName, // show SQL name if exists
                   pdfUrl: pdfOk ? pdfUrl : null,
                   ocrText: text,
-                  // fieldsJson: fields,
                 };
               })
               .catch((err) => {
-                console.error(`❌ Error fetching grouped document ${formName}`, err);
+                console.error(`❌ Error fetching grouped document ${localFormName}`, err);
                 return null;
               });
           })
@@ -376,7 +452,7 @@ const SessionDetail: React.FC = () => {
         return docs.filter(Boolean);
       })
       .catch((err) => {
-        console.error("❌ Failed to load form names:", err);
+        console.error("❌ Failed to load grouped documents:", err);
         return [];
       });
   }
@@ -384,22 +460,12 @@ const SessionDetail: React.FC = () => {
 
 
 
-
-  useEffect(() => {
-    if (sessionId && documentId) {
-      getGroupedDocuments(sessionId, documentId).then((docs) => {
-        setGroupedDocs(docs);
-      });
-    }
-  }, [sessionId, documentId]);
-
-
   useEffect(() => {
     if (sessionId && documentId) {
       console.log("🚀 Calling getGroupedDocuments()");
       getGroupedDocuments(sessionId, documentId).then((docs) => {
         console.log("📦 Grouped docs loaded:", docs);
-        setGroupedDocs(docs);
+        setGroupedResults(docs);
       });
     } else {
       console.warn("❌ sessionId or documentId is missing:");
@@ -409,8 +475,52 @@ const SessionDetail: React.FC = () => {
   }, [sessionId, documentId]);
 
 
+  const saveGroupedDocName = async (oldName: string, newName: string) => {
+
+    const sessionId = localStorage.getItem("sessionId");
+    const documentId = localStorage.getItem("documentId");
+
+    if (!sessionId) return alert("❌ No session ID found.");
+
+    try {
+      const res = await fetch("http://localhost:3000/api/documents/update-grouped-name", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, documentId, oldName, newName }),
+      });
+
+      if (res.ok) {
+        console.log("✅ Grouped document name updated");
+      } else {
+        console.error("❌ Failed to update grouped doc name");
+      }
+    } catch (err) {
+      console.error("❌ Error:", err);
+    }
+  };
+
+  const [editingNames, setEditingNames] = useState<{ [key: string]: string }>({});
+  const [savingIds, setSavingIds] = useState<{ [key: string]: boolean }>({});
+
+
+  // Initialize when groupedResults changes
+  useEffect(() => {
+    const initialNames: { [key: string]: string } = {};
+    groupedResults.forEach((doc, index) => {
+      const key = doc.documentId || `doc-${index}`; // fallback if no documentId
+      initialNames[key] = doc.formName === "unclassified" ? "" : doc.formName;
+    });
+    setEditingNames(initialNames);
+  }, [groupedResults]);
+
+
+
+
+  const [updatedNames, setUpdatedNames] = useState<{ [key: string]: string }>({});
+
 
   const [splittedDocs, setSplittedDocs] = useState([]);
+
   const [ocrMethod, setOcrMethod] = useState("azure");
 
   useEffect(() => {
@@ -441,7 +551,7 @@ const SessionDetail: React.FC = () => {
         const res = await fetch(`http://localhost:3000/api/documents/split/session/${id}`);
         const data = await res.json();
 
-        // console.log("✅ Split docs fetched:", data); // DEBUG LOG
+        console.log("✅ Split docs fetched:", data); // DEBUG LOG
         setSplittedDocs(data.results || []);
       } catch (err) {
         console.error('❌ Failed to load split docs:', err);
@@ -450,6 +560,126 @@ const SessionDetail: React.FC = () => {
 
     fetchSplittedDocs();
   }, [sessionId]);
+
+
+
+  useEffect(() => {
+    const fetchExtractedDocs = async () => {
+      try {
+        const id = sessionId || localStorage.getItem("sessionId");
+        if (!id) {
+          console.warn("⚠️ No sessionId available to fetch extracted docs");
+          return;
+        }
+
+        const res = await fetch(`http://localhost:3000/api/documents/ocr/${id}`);
+        const data = await res.json();
+
+        // console.log("✅ Extracted OCR docs fetched:", data);
+        setExtractedDocs(data.results || []);
+      } catch (err) {
+        console.error("❌ Failed to load extracted docs:", err);
+      }
+    };
+
+    fetchExtractedDocs();
+  }, [sessionId]);
+
+  const [lifecycles, setLifecycles] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchLifecycles = async () => {
+      if (!currentSession?.lifecycle) return;
+
+      try {
+        const res = await fetch("http://localhost:3000/api/documents/lifecycles");
+        if (!res.ok) throw new Error("Failed to fetch lifecycles");
+
+        const data = await res.json();
+
+        const instruments = data.map((item: any) => ({
+          id: item.ID,
+          name: item.Instrument,
+          instrument: item.Instrument, // ✅ correct
+          transition: item.Transition, // store separately for matching
+          fullLifecycle: `${item.Instrument} — ${item.Transition}`,
+          requiredDocuments: item.Applicable_Documents
+            ? item.Applicable_Documents.split(',').map((d: string) => d.trim())
+            : []
+        }));
+
+        setLifecycles(instruments);
+
+        const sessionInstrument = currentSession.instrument; // from session table
+        const sessionLifecycle = currentSession.lifecycle;
+
+        // Try to match by instrument + transition substring
+        const isExisting = instruments.some(
+          (lc) =>
+            lc.instrument === sessionInstrument &&
+            sessionLifecycle.includes(lc.transition)
+        );
+
+        localStorage.setItem("lifecycleMethod", isExisting ? "existing" : "new");
+      } catch (error) {
+        console.error("❌ Error fetching lifecycles:", error);
+        localStorage.setItem("lifecycleMethod", "new"); // fallback
+      }
+    };
+
+    fetchLifecycles();
+  }, [currentSession]);
+
+
+
+  const [fields, setFields] = useState<{ key: string; value: string }[]>([]);
+
+  useEffect(() => {
+    const fetchGroupedData = async () => {
+      const sessionId = localStorage.getItem("sessionId");
+      const documentId = localStorage.getItem("documentId");
+      if (!sessionId || !documentId) return;
+
+      try {
+        // 1️⃣ Fetch PDFs + formNames + OCR
+        const docs = await getGroupedDocuments(sessionId, documentId);
+
+        // 2️⃣ Fetch grouped fields
+        const res = await fetch(
+          `http://localhost:3000/api/documents/grouped-fields/${sessionId}/${documentId}`
+        );
+        const fieldsData = await res.json();
+
+        console.log("Grouped fields fetched:", fieldsData);
+
+        // 3️⃣ Merge docs with fields
+        const merged = docs.map((doc) => {
+          // Match the fields for this doc by formName
+          const pageKey = doc.formName;
+          return {
+            ...doc,
+            pages: fieldsData.pages[pageKey] ? { [pageKey]: fieldsData.pages[pageKey] } : {},
+            fieldsLoading: false,
+            documentId: doc.formName,
+          };
+        });
+
+
+        setGroupedResults(merged);
+      } catch (err) {
+        console.error("Error fetching grouped documents + fields:", err);
+        setGroupedResults([]);
+      }
+    };
+
+    fetchGroupedData();
+  }, []);
+
+
+
+
+
+
 
 
   const fetchSplitResultsForDoc = async (docId: string) => {
@@ -487,49 +717,55 @@ const SessionDetail: React.FC = () => {
     }
   };
 
-  async function fetchGroupedResultsForDoc(sessionId: string, documentId: string) {
-    if (!sessionId || !documentId) return;
 
-    setGroupedLoading(true);
-    setGroupedResults([]);
 
-    try {
-      const res = await fetch(`http://localhost:3000/api/documents/grouped-files/${sessionId}/${documentId}`);
-      const data = await res.json();
-      const formNames = data.forms || [];
 
-      const basePath = `http://localhost:3000/grouped/${sessionId}/${documentId}`;
 
-      const docs = await Promise.all(
-        formNames.map(async (formName) => {
-          const pdfUrl = `${basePath}/${formName}/document.pdf`;
-          const textUrl = `${basePath}/${formName}/text.txt`;
 
-          const [pdfRes, textRes] = await Promise.all([fetch(pdfUrl), fetch(textUrl)]);
-          const pdfOk = pdfRes.ok;
-          const text = textRes.ok ? await textRes.text() : "";
 
-          return {
-            formName,
-            pdfUrl: pdfOk ? pdfUrl : null,
-            ocrText: text
-          };
-        })
-      );
+  // async function fetchGroupedResultsForDoc(sessionId: string, documentId: string) {
+  //   if (!sessionId || !documentId) return;
 
-      setGroupedResults(docs.filter(Boolean));
-    } catch (err) {
-      console.error("❌ Failed to fetch grouped documents:", err);
-    } finally {
-      setGroupedLoading(false);
-    }
-  }
+  //   setGroupedLoading(true);
+  //   setGroupedResults([]);
 
-  useEffect(() => {
-    if (sessionId && activeSplitDocId) {
-      fetchGroupedResultsForDoc(sessionId, activeSplitDocId);
-    }
-  }, [activeSplitDocId, sessionId]);
+  //   try {
+  //     const res = await fetch(`http://localhost:3000/api/documents/grouped-files/${sessionId}/${documentId}`);
+  //     const data = await res.json();
+  //     const formNames = data.forms || [];
+
+  //     const basePath = `http://localhost:3000/grouped/${sessionId}/${documentId}`;
+
+  //     const docs = await Promise.all(
+  //       formNames.map(async (formName) => {
+  //         const pdfUrl = `${basePath}/${formName}/document.pdf`;
+  //         const textUrl = `${basePath}/${formName}/text.txt`;
+
+  //         const [pdfRes, textRes] = await Promise.all([fetch(pdfUrl), fetch(textUrl)]);
+  //         const pdfOk = pdfRes.ok;
+  //         const text = textRes.ok ? await textRes.text() : "";
+
+  //         return {
+  //           formName,
+  //           pdfUrl: pdfOk ? pdfUrl : null,
+  //           ocrText: text
+  //         };
+  //       })
+  //     );
+
+  //     setGroupedResults(docs.filter(Boolean));
+  //   } catch (err) {
+  //     console.error("❌ Failed to fetch grouped documents:", err);
+  //   } finally {
+  //     setGroupedLoading(false);
+  //   }
+  // }
+
+  // useEffect(() => {
+  //   if (sessionId && activeSplitDocId) {
+  //     fetchGroupedResultsForDoc(sessionId, activeSplitDocId);
+  //   }
+  // }, [activeSplitDocId, sessionId]);
 
 
   useEffect(() => {
@@ -558,11 +794,23 @@ const SessionDetail: React.FC = () => {
     setFieldData(null);
 
     try {
-      const res = await fetch(`http://localhost:3000/api/documents/${sessionId}/${fileName}/fields`);
+      const sessionId = localStorage.getItem('sessionId');
+      const documentId = localStorage.getItem('documentId');
+
+      if (!sessionId && !documentId) {
+        alert('❌ No ID found.');
+        return;
+      }
+
+      const res = await fetch(
+        `http://localhost:3000/api/documents/${sessionId}/${documentId}/fields`
+      );
       const data = await res.json();
-      setFieldData(data.fields || {});
+
+      // console.log('Fields received from backend:', data); // ✅ debug
+      setFieldData(data);
     } catch (err) {
-      console.error("Field extraction failed", err);
+      console.error('Field fetch failed', err);
       setFieldData(null);
     } finally {
       setFieldLoading(false);
@@ -582,6 +830,27 @@ const SessionDetail: React.FC = () => {
     selectedEngine: string;
     onChange: (value: string) => void;
   };
+
+
+  const lifecycleMethod = localStorage.getItem("lifecycleMethod") || "new";
+
+  const tabs = [
+    { id: 'documents', label: 'Documents', icon: FileText, count: documents.length },
+    { id: 'extracted', label: 'Extracted Docs', icon: FileText, count: extractedDocs.length },
+    { id: 'splitted', label: 'Splitted Docs', icon: Layers },
+    { id: 'grouped', label: 'Grouped Docs', icon: Settings },
+    { id: 'catalog', label: 'Cataloged Docs', icon: Eye, count: 0 },
+    { id: 'final', label: 'Final Review', icon: Check, count: 0 }
+  ];
+
+  // Filter tabs based on lifecycleMethod
+  const visibleTabs = tabs.filter(tab => {
+    if (tab.id === "documents" || tab.id === "final") return true; // always show
+    if (lifecycleMethod === "existing") return tab.id === "extracted"; // only show Extracted
+    if (lifecycleMethod === "new") return tab.id !== "extracted"; // show all except Extracted
+    return true;
+  });
+
 
   const OCRSelector: React.FC<OCRSelectorProps> = ({ selectedEngine, onChange }) => {
     return (
@@ -669,8 +938,8 @@ const SessionDetail: React.FC = () => {
       </div>
 
       {/* Enhanced Progress Steps */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-        <div className="mb-4">
+      {/* <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6"> */}
+      {/* <div className="mb-4">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-lg font-semibold text-slate-900">Processing Progress</h3>
             <span className="text-sm font-medium text-slate-600">{progressPercentage}% Complete</span>
@@ -681,9 +950,9 @@ const SessionDetail: React.FC = () => {
               style={{ width: `${progressPercentage}%` }}
             />
           </div>
-        </div>
+        </div> */}
 
-        <div className="flex items-center justify-between">
+      {/* <div className="flex items-center justify-between">
           {[
             { step: 1, label: 'Upload', status: documents.length > 0 ? 'completed' : 'pending', count: documents.length },
             { step: 2, label: 'OCR Process', status: documents.some(d => d.status === 'processed' || d.status === 'validated') ? 'completed' : 'pending', count: documents.filter(d => d.status === 'processed' || d.status === 'validated').length },
@@ -712,8 +981,8 @@ const SessionDetail: React.FC = () => {
               )}
             </div>
           ))}
-        </div>
-      </div>
+        </div> */}
+      {/* </div> */}
 
       {/* Quick Actions */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
@@ -760,14 +1029,7 @@ const SessionDetail: React.FC = () => {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200">
         <div className="border-b border-slate-200">
           <nav className="flex space-x-8 px-6">
-            {[
-              { id: 'documents', label: 'Documents', icon: FileText, count: documents.length },
-              { id: 'splitted', label: 'Splitted Docs', icon: Layers },  // ✅ NEW
-
-              { id: 'grouped', label: 'Grouped Docs', icon: Settings },
-              { id: 'catalog', label: 'Cataloged Docs', icon: Eye, count: 0 },
-              { id: 'final', label: 'Final Review', icon: Check, count: 0 }
-            ].map((tab) => (
+            {visibleTabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
@@ -786,6 +1048,7 @@ const SessionDetail: React.FC = () => {
               </button>
             ))}
           </nav>
+
         </div>
 
         {/* Tab Content */}
@@ -810,6 +1073,7 @@ const SessionDetail: React.FC = () => {
                   <div key={document.Id} className="bg-slate-50 rounded-lg p-4">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
+                        <h3 className="font-medium text-slate-900">{document.DocumentName}</h3>
                         <h3 className="font-medium text-slate-900">{document.FileName}</h3>
                         <p className="text-sm text-slate-600">
                           {document.FileSize ? `${(document.FileSize / 1024).toFixed(2)} KB` : '0 KB'}
@@ -864,9 +1128,16 @@ const SessionDetail: React.FC = () => {
                     {/* ✅ Action buttons */}
                     <div className="flex items-center space-x-2 mt-4">
                       <button
-                        onClick={() => runSplitDocument(document.Id)}
+                        onClick={() => {
+                          const lifecycleMethod = localStorage.getItem("lifecycleMethod");
+                          if (lifecycleMethod === "existing") {
+                            runSplitDocument(document.Id);
+                          } else {
+                            runSplitDocumentNew(document.Id);
+                          }
+                        }}
                         className={`flex-1 bg-blue-600 text-white px-3 py-2 rounded text-sm transition-colors flex items-center justify-center space-x-1
-                           ${splittingDocId === document.Id ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
+       ${splittingDocId === document.Id ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-700'}`}
                         disabled={splittingDocId === document.Id}
                       >
                         {splittingDocId === document.Id ? (
@@ -878,6 +1149,18 @@ const SessionDetail: React.FC = () => {
                           <span>Start Process</span>
                         )}
                       </button>
+
+                      {/* Toast Container (fixed top-right) */}
+                      <div className="fixed top-4 right-4 space-y-2 z-50">
+                        {toasts.map((msg, idx) => (
+                          <div
+                            key={idx}
+                            className="bg-green-100 text-green-700 px-4 py-2 rounded shadow-md border border-green-300 animate-slide-in"
+                          >
+                            {msg}
+                          </div>
+                        ))}
+                      </div>
 
                       {document.status === 'uploaded' && (
                         <button
@@ -920,6 +1203,7 @@ const SessionDetail: React.FC = () => {
                       )}
                     </div>
 
+
                     {/* ✅ Metadata sections */}
                     {document.extractedFields?.length > 0 && (
                       <div className="mt-3 pt-3 border-t border-slate-200">
@@ -939,6 +1223,119 @@ const SessionDetail: React.FC = () => {
                   </div>
                 ))}
               </div>
+
+            </div>
+          )}
+
+          {activeTab === 'extracted' && (
+            <div className="space-y-6">
+              <h2 className="text-xl font-semibold text-slate-900">Extracted OCR Documents</h2>
+
+              {/* Dropdown for selecting a document */}
+              <select
+                onChange={async (e) => {
+                  const docId = e.target.value;
+                  setActiveExtractedDocId(docId);
+
+                  const selected = extractedDocs.find(doc => doc.document_id === docId);
+                  setExtractedText(selected?.ocr_text || "");
+                  setActiveExtractedDoc(selected || null);
+
+                  // Fetch extracted fields from backend
+                  if (docId) {
+                    const sid = localStorage.getItem("sessionId");
+
+                    try {
+                      const res = await fetch(
+                        `http://localhost:3000/api/documents/${sid}/${docId}/fields`
+                      );
+                      const data = await res.json();
+                      setFields(data); // save fields
+                      console.log("Fields fetched:", data);
+
+                    } catch (err) {
+                      console.error("Error fetching fields:", err);
+                      setFields([]);
+                    }
+                  } else {
+                    setFields([]);
+                  }
+                }}
+                value={activeExtractedDocId || ''}
+                className="border border-slate-300 rounded px-2 py-1 text-sm mb-4"
+              >
+                <option value="">-- Select a Document --</option>
+                {extractedDocs.map(doc => (
+                  <option key={doc.document_id} value={doc.document_id}>
+                    {doc.DocumentName || doc.FileName || doc.document_id}
+                  </option>
+                ))}
+              </select>
+
+
+              <div>
+                {activeExtractedDocId ? (
+                  <div className="space-y-4">
+
+                    {/* Row 1: PDF + OCR Text */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* PDF Viewer */}
+                      <div className="border rounded overflow-hidden h-[250px]">
+                        <iframe
+                          src={`/outputs/${localStorage.getItem("sessionId")}/${activeExtractedDocId}.pdf`}
+                          title="Document PDF"
+                          width="100%"
+                          height="100%"
+                          className="border-0"
+                        />
+                      </div>
+
+                      {/* OCR Text */}
+                      <div className="bg-gray-50 border rounded p-3 overflow-y-auto h-[250px] text-xs font-mono whitespace-pre-wrap">
+                        <strong className="block text-gray-700 mb-2">Extracted OCR Text</strong>
+                        {extractedText || "No OCR text available"}
+                      </div>
+                    </div>
+
+                    {/* Row 2: Fields Table */}
+                    <div className="bg-gray-50 border rounded p-3 overflow-y-auto h-[200px] text-xs font-mono">
+                      {fields.length > 0 ? (
+                        <>
+                          <h4 className="text-slate-700 font-semibold mb-2">Extracted Fields</h4>
+                          <div className="overflow-x-auto">
+                            <table className="w-full border border-gray-300 text-sm">
+                              <thead className="bg-gray-100">
+                                <tr>
+                                  <th className="border px-2 py-1 text-left">Field</th>
+                                  <th className="border px-2 py-1 text-left">Value</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {fields.map((f, idx) => (
+                                  <tr key={idx} className="hover:bg-gray-50">
+                                    <td className="border px-2 py-1 font-medium">{f.key}</td>
+                                    <td className="border px-2 py-1">{f.value}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-slate-500 text-sm mt-2">No extracted fields found.</p>
+                      )}
+                    </div>
+
+                  </div>
+                ) : (
+                  <div className="text-slate-500 text-sm">
+                    Select a document to view its OCR results and extracted fields.
+                  </div>
+                )}
+              </div>
+
+
+
 
             </div>
           )}
@@ -989,31 +1386,27 @@ const SessionDetail: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Fields Preview */}
-                      <div className="bg-gray-100 p-3 rounded text-sm text-gray-800 max-h-64 overflow-y-auto border border-gray-200">
-                        <strong className="block mb-2">Extracted Fields</strong>
-                        {fieldLoading ? (
-                          <p>Loading fields...</p>
-                        ) : activeFieldDoc === file.fileName && fieldData && Object.keys(fieldData).length > 0 ? (
-                          <ul className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                            {Object.entries(fieldData).map(([key, value]) => (
-                              <li key={key}><strong>{key}:</strong> {String(value)}</li>
+                      {/* Extracted Fields */}
+                      {fieldLoading && <p>Loading fields...</p>}
+                      {!fieldLoading && fieldData && (
+                        <div className="max-h-64 overflow-y-auto border rounded p-2">
+                          <div className="grid grid-cols-2 gap-4">
+                            {fieldData.map((field: { key: string; value: string }, index: number) => (
+                              <div
+                                key={index}
+                                className="flex flex-col border-b pb-1 text-sm"
+                              >
+                                <span className="font-semibold text-gray-700">{field.key}</span>
+                                <span className="text-gray-800 truncate">{field.value}</span>
+                              </div>
                             ))}
-                          </ul>
-                        ) : (
-                          <p>No fields found for this page.</p>
-                        )}
-                      </div>
+                          </div>
+                        </div>
 
-                      {/* Auto trigger field fetch */}
-                      {activeFieldDoc !== file.fileName && (
-                        <button
-                          onClick={() => handleFieldTabClick(file.fileName)}
-                          className="text-blue-600 text-sm underline"
-                        >
-                          Load Fields
-                        </button>
                       )}
+
+
+
                     </div>
                   ))}
                 </div>
@@ -1028,6 +1421,7 @@ const SessionDetail: React.FC = () => {
           )}
 
 
+
           {activeTab === 'grouped' && (
             <div className="space-y-6">
               <h2 className="text-xl font-semibold text-slate-900">Grouped Documents</h2>
@@ -1036,26 +1430,111 @@ const SessionDetail: React.FC = () => {
                 <p>Loading grouped documents...</p>
               ) : groupedResults.length > 0 ? (
                 <div className="grid grid-cols-1 gap-8">
-                  {groupedResults.map((doc, index) => (
-                    <div key={index} className="bg-white rounded-lg shadow p-4 space-y-4 border border-slate-200">
-                      <h3 className="text-slate-800 font-medium text-sm truncate">{doc.formName}</h3>
+                  {groupedResults.map((doc, index) => {
+                    const key = doc.documentId || `doc-${index}`;
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* PDF Preview */}
-                        <iframe
-                          src={doc.pdfUrl}
-                          title={`PDF Preview ${doc.formName}`}
-                          className="w-full h-64 border rounded"
-                        ></iframe>
+                    return (
+                      <div
+                        key={key}
+                        className="bg-white rounded-lg shadow p-4 space-y-4 border border-slate-200"
+                      >
+                        {/* Editable form name */}
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="text"
+                            value={editingNames[key] ?? doc.formName}
+                            onChange={(e) =>
+                              setEditingNames((prev) => ({
+                                ...prev,
+                                [key]: e.target.value,
+                              }))
+                            }
+                            className="border rounded px-2 py-1 w-full font-medium text-sm"
+                          />
+                          <button
+                            className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 disabled:opacity-50"
+                            disabled={!editingNames[key] || editingNames[key] === doc.formName}
+                            onClick={async () => {
+                              const newName = editingNames[key]?.trim();
+                              if (!newName || newName === doc.formName) return;
 
-                        {/* OCR Text */}
-                        <div className="bg-gray-50 border rounded p-3 overflow-y-auto h-64 text-xs font-mono whitespace-pre-wrap">
-                          <strong className="block text-gray-700 mb-2">Extracted Text</strong>
-                          {doc.ocrText}
+
+                              try {
+                                const res = await saveGroupedDocName(doc.formName, newName);
+                                if (res) {
+                                  // ✅ update groupedResults immediately
+                                  setGroupedResults((prev) =>
+                                    prev.map((d) =>
+                                      d.documentId === doc.documentId && d.formName === doc.formName
+                                        ? { ...d, formName: newName }
+                                        : d
+                                    )
+                                  );
+                                }
+                                setEditingNames((prev) => ({ ...prev, [key]: undefined }));
+                              } catch (err) {
+                                console.error("❌ Failed to save grouped doc name", err);
+                              }
+                            }}
+                          >
+                            Save
+                          </button>
                         </div>
+
+                        {/* PDF + OCR Text */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <iframe
+                            src={doc.pdfUrl}
+                            title={`PDF Preview ${doc.formName}`}
+                            className="w-full h-64 border rounded"
+                          ></iframe>
+
+                          <div className="bg-gray-50 border rounded p-3 overflow-y-auto h-64 text-xs font-mono whitespace-pre-wrap">
+                            <strong className="block text-gray-700 mb-2">Extracted Text</strong>
+                            {doc.ocrText || "No OCR text available"}
+                          </div>
+                        </div>
+
+                        {/* Render Fields */}
+                        <div className="bg-gray-100 p-3 rounded text-sm text-gray-800 max-h-96 overflow-y-auto border border-gray-200">
+                          <strong className="block mb-2">Extracted Fields</strong>
+
+                          {doc.fieldsLoading ? (
+                            <p>Loading fields...</p>
+                          ) : doc.pages && Object.keys(doc.pages).length > 0 ? (
+                            Object.entries(doc.pages).map(([formType, fieldsArray], idx) => (
+                              <div key={idx} className="mb-4">
+                                {/* Group title */}
+                                <h4 className="font-medium text-sm mb-2 text-blue-700">{formType}</h4>
+
+                                {fieldsArray.length > 0 ? (
+                                  <div className="grid grid-cols-2 gap-3">
+                                    {fieldsArray.map((fieldObj, fieldIdx) =>
+                                      Object.entries(fieldObj).map(([key, value]) => (
+                                        <div
+                                          key={`${fieldIdx}-${key}`}
+                                          className="flex flex-col border-b pb-1"
+                                        >
+                                          <span className="font-semibold text-gray-700">{key}</span>
+                                          <span className="text-gray-800 truncate">{value}</span>
+                                        </div>
+                                      ))
+                                    )}
+                                  </div>
+                                ) : (
+                                  <p className="text-gray-500">No fields found for this section.</p>
+                                )}
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-gray-500">No fields found for this document.</p>
+                          )}
+                        </div>
+
+
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-slate-500 text-sm">
@@ -1069,54 +1548,63 @@ const SessionDetail: React.FC = () => {
 
 
 
-         
+
+
 
           {activeTab === 'catalog' && (
-  <div className="space-y-6">
-    <h2 className="text-xl font-semibold text-slate-900">Cataloged Documents</h2>
+            <div className="space-y-6">
+              <h2 className="text-xl font-semibold text-slate-900">Cataloged Documents</h2>
 
-    {catalogLoading ? (
-      <p>Loading cataloged documents...</p>
-    ) : catalogedResults.length > 0 ? (
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white border border-slate-200 text-sm">
-          <thead className="bg-slate-100">
-            <tr>
-              <th className="py-2 px-4 border-b text-left">Grouped Form</th>
-              <th className="py-2 px-4 border-b text-left">Matched Document</th>
-              <th className="py-2 px-4 border-b text-left">Confidence</th>
-              <th className="py-2 px-4 border-b text-left">Timestamp</th>
-            </tr>
-          </thead>
-          <tbody>
-            {catalogedResults
-              .filter(entry => entry.document_id === activeSplitDocId)
-              .map((entry, idx) => (
-                <tr key={idx} className="hover:bg-slate-50">
-                  <td className="py-2 px-4 border-b">{entry.grouped_form_type || '-'}</td>
-                  <td className="py-2 px-4 border-b">{entry.matched_document_name || '-'}</td>
-                  <td className="py-2 px-4 border-b">
-                    {entry.confidence_score === 0
-                      ? '0'
-                      : (parseFloat(entry.confidence_score).toFixed(2))}
-                  </td>
-                  <td className="py-2 px-4 border-b">
-                    {new Date(entry.cataloged_at).toLocaleString()}
-                  </td>
-                </tr>
-              ))}
-          </tbody>
-        </table>
-      </div>
-    ) : (
-      <div className="text-slate-500 text-sm">
-        {activeSplitDocId
-          ? 'No cataloged results available for this document.'
-          : 'Select a document in "Splitted" tab to view cataloged results.'}
-      </div>
-    )}
-  </div>
-)}
+              {catalogLoading ? (
+                <p>Loading cataloged documents...</p>
+              ) : catalogedResults.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full bg-white border border-slate-200 text-sm">
+                    <thead className="bg-slate-100">
+                      <tr>
+                        <th className="py-2 px-4 border-b text-left">Grouped Form</th>
+                        <th className="py-2 px-4 border-b text-left">Matched Document</th>
+                        <th className="py-2 px-4 border-b text-left">Confidence</th>
+                        <th className="py-2 px-4 border-b text-left">Timestamp</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {catalogedResults
+                        .filter(entry => entry.document_id === activeSplitDocId)
+                        .map((entry, idx) => {
+                          // Find updated formName from groupedResults
+                          const updatedDoc = groupedResults.find(d => d.documentId === entry.document_id);
+                          const updatedName = updatedDoc ? updatedDoc.formName : entry.matched_document_name;
+
+                          return (
+                            <tr key={idx} className="hover:bg-slate-50">
+                              <td className="py-2 px-4 border-b">{entry.grouped_form_type || '-'}</td>
+                              <td className="py-2 px-4 border-b">{updatedName || '-'}</td>
+                              <td className="py-2 px-4 border-b">
+                                {entry.confidence_score === 0
+                                  ? '0'
+                                  : parseFloat(entry.confidence_score).toFixed(2)}
+                              </td>
+                              <td className="py-2 px-4 border-b">
+                                {new Date(entry.cataloged_at).toLocaleString()}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-slate-500 text-sm">
+                  {activeSplitDocId
+                    ? 'No cataloged results available for this document.'
+                    : 'Select a document in "Splitted" tab to view cataloged results.'}
+                </div>
+              )}
+            </div>
+          )}
+
+
 
 
 
