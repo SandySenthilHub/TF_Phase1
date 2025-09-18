@@ -21,7 +21,6 @@ testConnection()
       console.log('🎉 Your application should now be able to connect to the database.');
     } else {
       console.log('❌ Connection test failed!');
-      console.log('🔧 Please check your database configuration and ensure:');
       console.log('   1. SQL Server is running');
       console.log('   2. TCP/IP is enabled in SQL Server Configuration Manager');
       console.log('   3. SQL Server Browser service is running');
